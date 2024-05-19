@@ -82,6 +82,7 @@ class PrepPB:
         """Return the prepared data."""
         return self.data
 
+#Main here if need to see variable in variable explorer
 if __name__ == "__main__":
     preparer = PrepPB()
     preparer.prepare_data()
