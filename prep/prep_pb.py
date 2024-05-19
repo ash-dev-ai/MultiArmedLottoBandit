@@ -6,22 +6,23 @@ import logging
 from init.config import API_ENDPOINT, API_LIMIT, API_ENDPOINT_PB
 from sodapy import Socrata
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Ensure the log directory exists
+log_dir = os.path.join('prep', 'log')
+os.makedirs(log_dir, exist_ok=True)
 
-# Global variable to store the DataFrame
-pb_data = None
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class PrepPB:
     def __init__(self):
-        self.last_run_file = os.path.join('prep', 'last_run_pb.txt')
+        self.last_run_file = os.path.join(log_dir, 'last_run_pb.txt')
         self.client = Socrata(API_ENDPOINT, None)
+        self.data = None
 
     def load_data(self):
         """Fetch data from the API and load it into a DataFrame."""
-        global pb_data
         results = self.client.get(API_ENDPOINT_PB, limit=API_LIMIT)
-        pb_data = pd.DataFrame.from_records(results)
-        logging.info(f"Fetched {len(pb_data)} records from PB API")
+        self.data = pd.DataFrame.from_records(results)
+        logging.info(f"Fetched {len(self.data)} records from PB API")
 
     def record_last_run(self):
         """Record the current timestamp as the last run time."""
@@ -42,32 +43,29 @@ class PrepPB:
 
     def split_winning_numbers(self):
         """Split the winning numbers into separate columns."""
-        global pb_data
         # Ensure the winning numbers are strings
-        pb_data['winning_numbers'] = pb_data['winning_numbers'].astype(str)
+        self.data['winning_numbers'] = self.data['winning_numbers'].astype(str)
         # Split the winning numbers into six separate columns
-        split_cols = pb_data['winning_numbers'].str.split(expand=True)
-        pb_data['num1'] = split_cols[0]
-        pb_data['num2'] = split_cols[1]
-        pb_data['num3'] = split_cols[2]
-        pb_data['num4'] = split_cols[3]
-        pb_data['num5'] = split_cols[4]
-        pb_data['numA'] = split_cols[5]
+        split_cols = self.data['winning_numbers'].str.split(expand=True)
+        self.data['num1'] = split_cols[0]
+        self.data['num2'] = split_cols[1]
+        self.data['num3'] = split_cols[2]
+        self.data['num4'] = split_cols[3]
+        self.data['num5'] = split_cols[4]
+        self.data['numA'] = split_cols[5]
         logging.info("Split winning numbers into separate columns")
 
     def drop_multiplier(self):
         """Drop the Multiplier column from the data."""
-        global pb_data
-        if 'multiplier' in pb_data.columns:
-            pb_data.drop(columns=['multiplier'], inplace=True)
+        if 'multiplier' in self.data.columns:
+            self.data.drop(columns=['multiplier'], inplace=True)
             logging.info("Dropped Multiplier column")
 
     def label_weekday(self):
         """Label each draw date with the corresponding weekday."""
-        global pb_data
-        pb_data['draw_date'] = pd.to_datetime(pb_data['draw_date'])
-        pb_data['weekday'] = pb_data['draw_date'].dt.day_name()
-        pb_data['weekday'] = pb_data['weekday'].apply(
+        self.data['draw_date'] = pd.to_datetime(self.data['draw_date'])
+        self.data['weekday'] = self.data['draw_date'].dt.day_name()
+        self.data['weekday'] = self.data['weekday'].apply(
             lambda x: 'Monday' if x == 'Monday' else ('Wednesday' if x == 'Wednesday' else 'Saturday')
         )
         logging.info("Labeled draw dates with the corresponding weekday")
@@ -80,6 +78,11 @@ class PrepPB:
         self.label_weekday()
         self.record_last_run()
 
+    def get_data(self):
+        """Return the prepared data."""
+        return self.data
+
 if __name__ == "__main__":
     preparer = PrepPB()
     preparer.prepare_data()
+    print(preparer.get_data().head())
