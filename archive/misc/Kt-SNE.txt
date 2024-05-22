@@ -1,0 +1,63 @@
+BASIC RULE BASED
+    
+Frequency-Based Rules:
+        Identify the most frequently occurring numbers in the winning combinations and consider them as potential winning numbers for future draws.
+
+    Hot and Cold Numbers:
+        Separate the numbers into "hot" (frequently drawn) and "cold" (rarely drawn) groups based on their historical occurrences. Use this information to select numbers from the "hot" group for prediction.
+
+    Consecutive Number Rules:
+        Check if consecutive numbers are often present in the winning combinations. If they are, you may create rules to include consecutive numbers in your predictions.
+
+    Odd-Even Number Rules:
+        Analyze the distribution of odd and even numbers in winning combinations. Based on the observation, you can create rules like "include at least two odd and two even numbers" or "alternate odd and even numbers."
+
+    Number Sum Rules:
+        Calculate the sum of the numbers in the winning combinations and look for any patterns or tendencies. For instance, if there is a consistent range of sums, you can use that information to predict future sums.
+
+    Number Patterns and Sequences:
+        Search for any recurring number patterns or sequences in the winning combinations. Create rules to generate numbers following these patterns.
+
+    Delayed Numbers:
+        Some numbers may not appear as winners for an extended period. You can create rules that take into account such delayed numbers and consider them as potential candidates for future draws.
+
+    Historical Performance:
+        Evaluate the performance of certain numbers in past draws. If specific numbers tend to be winners more frequently, you can prioritize them in your predictions.
+
+    Random Sampling:
+        In the absence of strong patterns, you can randomly sample from the pool of numbers or combinations to make predictions.
+
+
+THEN
+
+K-MEANS CLUSTERING
+
+all_tickets against full_mm and org_mm
+Classifify those who win according to PARAMETERS/ groups.py
+
+THEN ADD ODDS
+
+    Maximum Likelihood Estimation (MLE):
+        MLE is a common frequentist statistical method used to estimate parameters of a probability distribution. It seeks to find the parameter values that maximize the likelihood of the observed data. When incorporating prior knowledge, you can modify the likelihood function to include the prior information as a prior distribution for the parameters.
+
+    Maximum A Posteriori (MAP) Estimation:
+        MAP estimation is a Bayesian method that combines the likelihood of the data and a prior distribution for the parameters. It finds the parameter values that maximize the posterior probability, which is proportional to the product of the likelihood and the prior distribution. MAP estimation is closely related to MLE but incorporates prior information.
+
+    Empirical Bayes Methods:
+        Empirical Bayes methods treat the parameters of a model as random variables and estimate their prior distribution from the data itself. This approach can be useful when you have a large dataset and can estimate the prior distribution based on a subset of the data.
+
+    Conjugate Priors:
+        In Bayesian statistics, some prior distributions are called "conjugate priors" because they lead to posterior distributions that belong to the same family as the prior. Conjugate priors can simplify calculations and allow for closed-form solutions, making them useful in practice.
+
+    Prior Data Augmentation:
+        This method involves augmenting the observed data with hypothetical or pseudo-observations based on prior knowledge. By incorporating these additional data points, you can influence the parameter estimates to align with the prior information.
+
+    Robust Priors:
+        If you are uncertain about the precise form of the prior distribution, you can use robust priors that are less informative and allow the data to have a stronger influence on the parameter estimates.
+
+    Expert Elicitation:
+        In some cases, you may not have a prior distribution explicitly defined, but you can seek input from domain experts to elicit their beliefs and knowledge about the parameters of interest. Expert opinions can be used to construct informative prior distributions.
+
+THEN
+
+t-Distributed Stochastic Neighbor Embedding (t-SNE)
