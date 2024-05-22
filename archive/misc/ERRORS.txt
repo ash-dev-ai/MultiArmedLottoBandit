@@ -1,0 +1,51 @@
+ERRORS TO FIX::
+Number of unique values in each column:
+Traceback (most recent call last):
+
+  File ~\AppData\Roaming\Python\Python311\site-packages\spyder_kernels\py3compat.py:356 in compat_exec
+    exec(code, globals, locals)
+
+  File a:\projects\software\pbmm\data\data_makeuniform.py:144
+    print_dataset_info("org_mm", org_mm)
+
+  File a:\projects\software\pbmm\data\data_makeuniform.py:81 in print_dataset_info
+    print(dataset.nunique())
+
+  File ~\AppData\Roaming\Python\Python311\site-packages\pandas\core\frame.py:10598 in nunique
+    return self.apply(Series.nunique, axis=axis, dropna=dropna)
+
+  File ~\AppData\Roaming\Python\Python311\site-packages\pandas\core\frame.py:9423 in apply
+    return op.apply().__finalize__(self, method="apply")
+
+  File ~\AppData\Roaming\Python\Python311\site-packages\pandas\core\apply.py:678 in apply
+    return self.apply_standard()
+
+  File ~\AppData\Roaming\Python\Python311\site-packages\pandas\core\apply.py:798 in apply_standard
+    results, res_index = self.apply_series_generator()
+
+  File ~\AppData\Roaming\Python\Python311\site-packages\pandas\core\apply.py:814 in apply_series_generator
+    results[i] = self.f(v)
+
+  File ~\AppData\Roaming\Python\Python311\site-packages\pandas\core\apply.py:133 in f
+    return func(x, *args, **kwargs)
+
+  File ~\AppData\Roaming\Python\Python311\site-packages\pandas\core\base.py:1068 in nunique
+    uniqs = self.unique()
+
+  File ~\AppData\Roaming\Python\Python311\site-packages\pandas\core\series.py:2194 in unique
+    return super().unique()
+
+  File ~\AppData\Roaming\Python\Python311\site-packages\pandas\core\base.py:1030 in unique
+    result = algorithms.unique1d(values)
+
+  File ~\AppData\Roaming\Python\Python311\site-packages\pandas\core\algorithms.py:390 in unique
+    return unique_with_mask(values)
+
+  File ~\AppData\Roaming\Python\Python311\site-packages\pandas\core\algorithms.py:429 in unique_with_mask
+    uniques = table.unique(values)
+
+  File pandas\_libs\hashtable_class_helper.pxi:7247 in pandas._libs.hashtable.PyObjectHashTable.unique
+
+  File pandas\_libs\hashtable_class_helper.pxi:7194 in pandas._libs.hashtable.PyObjectHashTable._unique
+
+TypeError: unhashable type: 'list'

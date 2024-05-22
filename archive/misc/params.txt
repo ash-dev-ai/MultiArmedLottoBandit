@@ -1,0 +1,32 @@
+mm_datasets = org_mm,full_mm,new_mm
+pb_datasets = org_pb,full_pb,new_pb
+
+Datasets: 
+Have the following colomns:
+Index(['d', 'm', 'r', 'w1', 'w2', 'w3', 'w4', 'w5'], dtype='object')
+
+w = w1,w2,w3,w4,w5
+r = r
+from Datasets import org_mm, org_pb, full_mm, full_pb, new_mm, new_pb
+
+for *_datasets 
+Create these groups with the labels 
+GROUPS	(,r) 	
+	(1 of w,r) 	So any w*..5 column and r 
+	(2 of w,r) 	Any 2 w*..5 columns and r
+	(3 of w) 	Any 2 w*..5 columns
+	(3 of w,r)	Any 3 w*..5 columns and r
+	(4 of w) 	Any 4 w*..5 columns
+	(4 of w,r) 	Any 4 w*..5 columns and r
+	(5 of w)	Any 5 w*..5 columns
+	(5 of w,r) 	Any 5 w*..5 columns and r
+LABELS 	r
+	1w+r 
+	2w+r 
+	3w 
+	3w+r 
+	4w 
+	4w+r 
+	5w 
+	5w+r
+

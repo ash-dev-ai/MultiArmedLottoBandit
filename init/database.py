@@ -1,5 +1,6 @@
 #Database.py
 import sqlite3
+import pandas as pd
 import logging
 
 logger = logging.getLogger(__name__)
@@ -89,6 +90,12 @@ class Database:
         except sqlite3.Error as e:
             logger.error(f"Error checking for records: {e}")
             return False
+
+    def fetch_all_combinations(self, batch_size=100000):
+        """Fetch all possible number combinations in batches."""
+        query = "SELECT num1, num2, num3, num4, num5, numA FROM numbers"
+        for chunk in pd.read_sql_query(query, self.conn, chunksize=batch_size):
+            yield chunk
 
     def close_connection(self):
         """Close the database connection."""

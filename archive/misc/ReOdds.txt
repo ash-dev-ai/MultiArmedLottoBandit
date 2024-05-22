@@ -1,0 +1,47 @@
+REWARDS =
+mm_datasets =
+	r = $2
+	1w+r = $4
+	2w+r = $10
+	3w = $10
+	3w+r = $200
+	4w = $500
+	4w+r = $10,000
+	5w = $1,000,000
+	5w+r = $20,000,000
+
+pb_datasets =
+	r = $4
+	1w+r = $4
+	2w+r = $7
+	3w = $7
+	3w+r = $100
+	4w = $100
+	4w+r = $50,000
+	5w = $1,000,000
+	5w+r = $20,000,000
+
+
+
+ODDS = 
+mm_groups =
+	r =  odds 1 in 27
+	1w+r = odds 1 in 89
+	2w+r = odds 1 in 693
+	3w = odds 1 in 606
+	3w+r = odds 1 in 14547
+	4w = odds 1 in 38,792
+	4w+r = odds 1 in 931,001
+	5w = odds 1 in 12,607,306
+	5w+r = odds 1 in 302,575,350
+
+pb_groups =
+	r = odds 1 in 38.32
+	1w+r = odds 1 in 91.98
+	2w+r = odds 1 in 701.33
+	3w = odds 1 in 579.76
+	3w+r = odds 1 in 14,494.11
+	4w = odds 1 in 36,525.17
+	4w+r = odds 1 in 913,129.18
+	5w = odds 1 in 11,688,053.52
+	5w+r = odds 1 in 292,201,338.00
