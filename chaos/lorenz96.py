@@ -32,9 +32,9 @@ def train_model(train_data, val_data, target_columns):
     models = {}
     for target_column in target_columns:
         model = RandomForestRegressor(n_estimators=100, random_state=42)
-        X_train = train_data.drop(columns=target_columns)
+        X_train = train_data.drop(columns=target_columns + ['draw_date'])
         y_train = train_data[target_column]
-        X_val = val_data.drop(columns=target_columns)
+        X_val = val_data.drop(columns=target_columns + ['draw_date'])
         y_val = val_data[target_column]
         
         model.fit(X_train, y_train)
@@ -48,7 +48,7 @@ def evaluate_model(models, test_data, target_columns):
     predictions = {}
     for target_column in target_columns:
         model = models[target_column]
-        X_test = test_data.drop(columns=target_columns)
+        X_test = test_data.drop(columns=target_columns + ['draw_date'])
         y_test = test_data[target_column]
         y_pred = model.predict(X_test)
         mse = mean_squared_error(y_test, y_pred)
@@ -71,7 +71,7 @@ def run_lorenz96(return_predictions=False):
     test_mb = pd.read_csv('data/test_mb.csv')
     
     # Use specified columns
-    columns_to_use = ['num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'numSum', 'totalSum', 'day']
+    columns_to_use = ['draw_date', 'num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'numSum', 'totalSum', 'day']
     train_combined = train_combined[columns_to_use]
     val_combined = val_combined[columns_to_use]
     test_combined = test_combined[columns_to_use]
@@ -97,8 +97,8 @@ def run_lorenz96(return_predictions=False):
     val_mb = transform_with_lorenz96(val_mb)
     test_mb = transform_with_lorenz96(test_mb)
     
-    # Define target columns (example: num4 and num5)
-    target_columns = ['num5', 'numA']
+    # Define target columns
+    target_columns = ['num1', 'num2', 'num3', 'num4', 'num5', 'numA']
     
     # Train and evaluate the model
     logging.info(f"Training models with combined dataset for {target_columns}...")
@@ -120,5 +120,6 @@ def run_lorenz96(return_predictions=False):
         return predictions_combined, predictions_pb, predictions_mb
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levellevelname)s - %(message)s')
     run_lorenz96()
+

@@ -1,4 +1,5 @@
 # rossler.py
+# rossler.py
 import numpy as np
 import pandas as pd
 import logging
@@ -31,9 +32,9 @@ def transform_with_rossler(data):
 
 def train_model(train_data, val_data, target_column):
     model = RandomForestRegressor(n_estimators=100, random_state=42)
-    X_train = train_data.drop(columns=[target_column])
+    X_train = train_data.drop(columns=[target_column, 'draw_date'])
     y_train = train_data[target_column]
-    X_val = val_data.drop(columns=[target_column])
+    X_val = val_data.drop(columns=[target_column, 'draw_date'])
     y_val = val_data[target_column]
     
     model.fit(X_train, y_train)
@@ -43,7 +44,7 @@ def train_model(train_data, val_data, target_column):
     return model
 
 def evaluate_model(model, test_data, target_column):
-    X_test = test_data.drop(columns=[target_column])
+    X_test = test_data.drop(columns=[target_column, 'draw_date'])
     y_test = test_data[target_column]
     y_pred = model.predict(X_test)
     mse = mean_squared_error(y_test, y_pred)
@@ -65,7 +66,7 @@ def run_rossler(return_predictions=False):
     test_mb = pd.read_csv('data/test_mb.csv')
     
     # Use specified columns
-    columns_to_use = ['num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'numSum', 'totalSum', 'day']
+    columns_to_use = ['draw_date', 'num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'numSum', 'totalSum', 'day']
     train_combined = train_combined[columns_to_use]
     val_combined = val_combined[columns_to_use]
     test_combined = test_combined[columns_to_use]
@@ -92,23 +93,28 @@ def run_rossler(return_predictions=False):
     test_mb = transform_with_rossler(test_mb)
     
     # Define target column (example: num1)
-    target_column = 'num1'
+    target_columns = ['num1', 'num2', 'num3', 'num4', 'num5', 'numA']
     
-    # Train and evaluate the model
-    logging.info(f"Training model with combined dataset for {target_column}...")
-    model_combined = train_model(train_combined, val_combined, target_column)
-    logging.info(f"Evaluating model with combined test dataset for {target_column}...")
-    predictions_combined = evaluate_model(model_combined, test_combined, target_column)
+    predictions_combined = {}
+    predictions_pb = {}
+    predictions_mb = {}
     
-    logging.info(f"Training model with PB dataset for {target_column}...")
-    model_pb = train_model(train_pb, val_pb, target_column)
-    logging.info(f"Evaluating model with PB test dataset for {target_column}...")
-    predictions_pb = evaluate_model(model_pb, test_pb, target_column)
-    
-    logging.info(f"Training model with MB dataset for {target_column}...")
-    model_mb = train_model(train_mb, val_mb, target_column)
-    logging.info(f"Evaluating model with MB test dataset for {target_column}...")
-    predictions_mb = evaluate_model(model_mb, test_mb, target_column)
+    for target_column in target_columns:
+        # Train and evaluate the model
+        logging.info(f"Training model with combined dataset for {target_column}...")
+        model_combined = train_model(train_combined, val_combined, target_column)
+        logging.info(f"Evaluating model with combined test dataset for {target_column}...")
+        predictions_combined[target_column] = evaluate_model(model_combined, test_combined, target_column)
+        
+        logging.info(f"Training model with PB dataset for {target_column}...")
+        model_pb = train_model(train_pb, val_pb, target_column)
+        logging.info(f"Evaluating model with PB test dataset for {target_column}...")
+        predictions_pb[target_column] = evaluate_model(model_pb, test_pb, target_column)
+        
+        logging.info(f"Training model with MB dataset for {target_column}...")
+        model_mb = train_model(train_mb, val_mb, target_column)
+        logging.info(f"Evaluating model with MB test dataset for {target_column}...")
+        predictions_mb[target_column] = evaluate_model(model_mb, test_mb, target_column)
     
     if return_predictions:
         return predictions_combined, predictions_pb, predictions_mb
@@ -116,4 +122,3 @@ def run_rossler(return_predictions=False):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     run_rossler()
-

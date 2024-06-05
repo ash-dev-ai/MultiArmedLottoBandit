@@ -1,4 +1,5 @@
 # vote.py
+# vote.py
 import logging
 from collections import Counter
 import numpy as np
@@ -41,7 +42,11 @@ def ensemble_voting(predictions):
     for dataset_predictions in zip(*padded_predictions):
         dataset_predictions = [pred for pred in dataset_predictions if pred is not None]  # Remove None values
         all_predictions = np.vstack(dataset_predictions)
-        most_common = [Counter(all_predictions[:, i]).most_common(1)[0][0] for i in range(all_predictions.shape[1])]
+        
+        # Convert arrays to tuples for hashing
+        all_predictions_as_tuples = [tuple(row) for row in all_predictions]
+        
+        most_common = [Counter([row[i] for row in all_predictions_as_tuples]).most_common(1)[0][0] for i in range(all_predictions.shape[1])]
         combined_predictions.append(most_common)
     
     return combined_predictions
@@ -51,7 +56,7 @@ def run_voting_ensemble():
     combined_predictions = ensemble_voting(predictions)
     
     logging.info("Top 5 Predictions:")
-    for i, prediction in enumerate(combined_predictions):
+    for i, prediction in enumerate(combined_predictions[:5]):
         logging.info(f"Prediction {i + 1}: {prediction}")
 
 if __name__ == "__main__":
