@@ -16,7 +16,7 @@ def process_batch(batch, n_arms):
 
 def main():
     db = Database('data/numbers.db')
-    batch_size = 100000
+    batch_size = 250000
     
     results = []
     try:

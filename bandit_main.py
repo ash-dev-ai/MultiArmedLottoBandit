@@ -52,8 +52,8 @@ def main():
     logging.info(f"Total Reward for MB dataset (Thompson Sampling): {sum(rewards_mb_ts)}")
 
     # Call the simulation script
-    logging.info("Running simulation on all combinations...")
-    simulate_main()
+#    logging.info("Running simulation on all combinations...")
+#    simulate_main()
 
 if __name__ == "__main__":
     main()
