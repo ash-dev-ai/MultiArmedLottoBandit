@@ -8,22 +8,22 @@ from chaos.lorenz96 import run_lorenz96
 from chaos.vote import run_voting_ensemble
 
 def main():
-    logging.info("Running Rössler model...")
+    logging.info("Running Rössler Attractor predictions...")
     run_rossler()
     
-    logging.info("Running Chua model...")
+    logging.info("Running Chua's Circuit predictions...")
     run_chua()
     
-    logging.info("Running Henon model...")
+    logging.info("Running Henon's Map predictions...")
     run_henon()
     
-    logging.info("Running Logistic model...")
+    logging.info("Running Logistic Map predictions...")
     run_logistic()
     
-    logging.info("Running Lorenz96 model...")
+    logging.info("Running Lorenz96 predictions...")
     run_lorenz96()
     
-    logging.info("Running ensemble voting for chaos theory models...")
+    logging.info("Running voting ensemble on predictions...")
     run_voting_ensemble()
 
 if __name__ == "__main__":

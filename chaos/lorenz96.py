@@ -4,6 +4,7 @@ import pandas as pd
 import logging
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
+from datetime import datetime
 
 def lorenz96(F=8, dt=0.01, steps=10000, n=36):
     x = F * np.ones(n)
@@ -55,6 +56,13 @@ def evaluate_model(models, test_data, target_columns):
         logging.info(f'Test MSE for {target_column}: {mse}')
         predictions[target_column] = y_pred
     return predictions
+
+def save_predictions(predictions, model_name):
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    for dataset, dataset_name in zip(predictions, ["combined", "pb", "mb"]):
+        filepath = f"data/predictions/{model_name}_predictions_{dataset_name}_{date_str}.csv"
+        logging.info(f"Saving {dataset_name} predictions to {filepath}")
+        dataset.to_csv(filepath, index=False)
 
 def run_lorenz96(return_predictions=False):
     logging.info("Loading datasets...")
@@ -116,10 +124,12 @@ def run_lorenz96(return_predictions=False):
     logging.info(f"Evaluating models with MB test dataset for {target_columns}...")
     predictions_mb = evaluate_model(models_mb, test_mb, target_columns)
     
+    # Save predictions
+    save_predictions([pd.DataFrame(predictions_combined), pd.DataFrame(predictions_pb), pd.DataFrame(predictions_mb)], "lorenz96")
+    
     if return_predictions:
         return predictions_combined, predictions_pb, predictions_mb
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levellevelname)s - %(message)s')
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     run_lorenz96()
-

@@ -1,62 +1,53 @@
 # vote.py
-# vote.py
 import logging
+import pandas as pd
+import os
 from collections import Counter
-import numpy as np
-from chaos.rossler import run_rossler
-from chaos.chua import run_chua
-from chaos.henon import run_henon
-from chaos.logistic import run_logistic
-from chaos.lorenz96 import run_lorenz96
 
-def get_model_predictions():
-    logging.info("Getting predictions from Rössler Attractor model...")
-    rossler_predictions = run_rossler(return_predictions=True)
-    
-    logging.info("Getting predictions from Chua's Circuit model...")
-    chua_predictions = run_chua(return_predictions=True)
-    
-    logging.info("Getting predictions from Henon's Map model...")
-    henon_predictions = run_henon(return_predictions=True)
-    
-    logging.info("Getting predictions from Logistic Map model...")
-    logistic_predictions = run_logistic(return_predictions=True)
-    
-    logging.info("Getting predictions from Lorenz96 model...")
-    lorenz96_predictions = run_lorenz96(return_predictions=True)
-    
+PREDICTIONS_DIR = 'data/predictions'
+
+def read_predictions(prefix):
+    files = [f for f in os.listdir(PREDICTIONS_DIR) if f.startswith(prefix)]
+    if not files:
+        logging.error(f"No prediction files found for {prefix}.")
+        return None
+    predictions = []
+    for file in files:
+        path = os.path.join(PREDICTIONS_DIR, file)
+        df = pd.read_csv(path)
+        predictions.append(df[['num1', 'num2', 'num3', 'num4', 'num5', 'numA']])
+    combined_predictions = pd.concat(predictions, axis=0)
+    return combined_predictions
+
+def get_all_predictions():
+    rossler_predictions = read_predictions("rossler")
+    chua_predictions = read_predictions("chua")
+    henon_predictions = read_predictions("henon")
+    logistic_predictions = read_predictions("logistic")
+    lorenz96_predictions = read_predictions("lorenz96")
     return rossler_predictions, chua_predictions, henon_predictions, logistic_predictions, lorenz96_predictions
 
 def ensemble_voting(predictions):
     combined_predictions = []
-
-    # Find the maximum length of predictions
-    max_length = max(len(pred[0]) for pred in predictions)
-    
-    # Ensure all predictions have the same length by padding with None
-    padded_predictions = []
-    for pred in predictions:
-        padded = [np.pad(p, (0, max_length - len(p)), 'constant', constant_values=None) for p in pred]
-        padded_predictions.append(np.array(padded))
-    
-    for dataset_predictions in zip(*padded_predictions):
-        dataset_predictions = [pred for pred in dataset_predictions if pred is not None]  # Remove None values
-        all_predictions = np.vstack(dataset_predictions)
-        
-        # Convert arrays to tuples for hashing
-        all_predictions_as_tuples = [tuple(row) for row in all_predictions]
-        
-        most_common = [Counter([row[i] for row in all_predictions_as_tuples]).most_common(1)[0][0] for i in range(all_predictions.shape[1])]
+    for dataset_predictions in predictions:
+        if dataset_predictions is None or dataset_predictions.empty:
+            logging.error("No valid predictions found for this dataset.")
+            continue
+        dataset_predictions = [pred for pred in dataset_predictions.values if not any(pd.isnull(pred))]
+        all_predictions = pd.DataFrame(dataset_predictions, columns=['num1', 'num2', 'num3', 'num4', 'num5', 'numA'])
+        most_common = [Counter(all_predictions[col]).most_common(1)[0][0] for col in all_predictions]
         combined_predictions.append(most_common)
-    
     return combined_predictions
 
 def run_voting_ensemble():
-    predictions = get_model_predictions()
-    combined_predictions = ensemble_voting(predictions)
-    
+    logging.info("Running voting ensemble on predictions...")
+    predictions = get_all_predictions()
+    combined_predictions = []
+    for prediction_set in predictions:
+        if prediction_set is not None:
+            combined_predictions.append(ensemble_voting([prediction_set]))
     logging.info("Top 5 Predictions:")
-    for i, prediction in enumerate(combined_predictions[:5]):
+    for i, prediction in enumerate(combined_predictions):
         logging.info(f"Prediction {i + 1}: {prediction}")
 
 if __name__ == "__main__":

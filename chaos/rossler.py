@@ -1,10 +1,10 @@
 # rossler.py
-# rossler.py
 import numpy as np
 import pandas as pd
 import logging
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
+from datetime import datetime
 
 def rossler_attractor(a=0.2, b=0.2, c=5.7, dt=0.01, steps=10000):
     x, y, z = 0, 1, 1.05
@@ -30,26 +30,40 @@ def transform_with_rossler(data):
     chaos_df = pd.DataFrame(chaos_data, columns=['rossler_x', 'rossler_y', 'rossler_z'])
     return pd.concat([data.reset_index(drop=True), chaos_df], axis=1)
 
-def train_model(train_data, val_data, target_column):
-    model = RandomForestRegressor(n_estimators=100, random_state=42)
-    X_train = train_data.drop(columns=[target_column, 'draw_date'])
-    y_train = train_data[target_column]
-    X_val = val_data.drop(columns=[target_column, 'draw_date'])
-    y_val = val_data[target_column]
-    
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_val)
-    mse = mean_squared_error(y_val, y_pred)
-    logging.info(f'Validation MSE for {target_column}: {mse}')
-    return model
+def train_model(train_data, val_data, target_columns):
+    models = {}
+    for target_column in target_columns:
+        model = RandomForestRegressor(n_estimators=100, random_state=42)
+        X_train = train_data.drop(columns=target_columns + ['draw_date'])
+        y_train = train_data[target_column]
+        X_val = val_data.drop(columns=target_columns + ['draw_date'])
+        y_val = val_data[target_column]
+        
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_val)
+        mse = mean_squared_error(y_val, y_pred)
+        logging.info(f'Validation MSE for {target_column}: {mse}')
+        models[target_column] = model
+    return models
 
-def evaluate_model(model, test_data, target_column):
-    X_test = test_data.drop(columns=[target_column, 'draw_date'])
-    y_test = test_data[target_column]
-    y_pred = model.predict(X_test)
-    mse = mean_squared_error(y_test, y_pred)
-    logging.info(f'Test MSE for {target_column}: {mse}')
-    return y_pred
+def evaluate_model(models, test_data, target_columns):
+    predictions = {}
+    for target_column in target_columns:
+        model = models[target_column]
+        X_test = test_data.drop(columns=target_columns + ['draw_date'])
+        y_test = test_data[target_column]
+        y_pred = model.predict(X_test)
+        mse = mean_squared_error(y_test, y_pred)
+        logging.info(f'Test MSE for {target_column}: {mse}')
+        predictions[target_column] = y_pred
+    return predictions
+
+def save_predictions(predictions, model_name):
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    for dataset, dataset_name in zip(predictions, ["combined", "pb", "mb"]):
+        filepath = f"data/predictions/{model_name}_predictions_{dataset_name}_{date_str}.csv"
+        logging.info(f"Saving {dataset_name} predictions to {filepath}")
+        dataset.to_csv(filepath, index=False)
 
 def run_rossler(return_predictions=False):
     logging.info("Loading datasets...")
@@ -92,29 +106,27 @@ def run_rossler(return_predictions=False):
     val_mb = transform_with_rossler(val_mb)
     test_mb = transform_with_rossler(test_mb)
     
-    # Define target column (example: num1)
+    # Define target columns
     target_columns = ['num1', 'num2', 'num3', 'num4', 'num5', 'numA']
     
-    predictions_combined = {}
-    predictions_pb = {}
-    predictions_mb = {}
+    # Train and evaluate the model
+    logging.info(f"Training models with combined dataset for {target_columns}...")
+    models_combined = train_model(train_combined, val_combined, target_columns)
+    logging.info(f"Evaluating models with combined test dataset for {target_columns}...")
+    predictions_combined = evaluate_model(models_combined, test_combined, target_columns)
     
-    for target_column in target_columns:
-        # Train and evaluate the model
-        logging.info(f"Training model with combined dataset for {target_column}...")
-        model_combined = train_model(train_combined, val_combined, target_column)
-        logging.info(f"Evaluating model with combined test dataset for {target_column}...")
-        predictions_combined[target_column] = evaluate_model(model_combined, test_combined, target_column)
-        
-        logging.info(f"Training model with PB dataset for {target_column}...")
-        model_pb = train_model(train_pb, val_pb, target_column)
-        logging.info(f"Evaluating model with PB test dataset for {target_column}...")
-        predictions_pb[target_column] = evaluate_model(model_pb, test_pb, target_column)
-        
-        logging.info(f"Training model with MB dataset for {target_column}...")
-        model_mb = train_model(train_mb, val_mb, target_column)
-        logging.info(f"Evaluating model with MB test dataset for {target_column}...")
-        predictions_mb[target_column] = evaluate_model(model_mb, test_mb, target_column)
+    logging.info(f"Training models with PB dataset for {target_columns}...")
+    models_pb = train_model(train_pb, val_pb, target_columns)
+    logging.info(f"Evaluating models with PB test dataset for {target_columns}...")
+    predictions_pb = evaluate_model(models_pb, test_pb, target_columns)
+    
+    logging.info(f"Training models with MB dataset for {target_columns}...")
+    models_mb = train_model(train_mb, val_mb, target_columns)
+    logging.info(f"Evaluating models with MB test dataset for {target_columns}...")
+    predictions_mb = evaluate_model(models_mb, test_mb, target_columns)
+    
+    # Save predictions
+    save_predictions([pd.DataFrame(predictions_combined), pd.DataFrame(predictions_pb), pd.DataFrame(predictions_mb)], "rossler")
     
     if return_predictions:
         return predictions_combined, predictions_pb, predictions_mb

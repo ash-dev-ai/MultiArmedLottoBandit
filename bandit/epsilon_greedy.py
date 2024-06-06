@@ -2,6 +2,7 @@
 import numpy as np
 import pandas as pd
 from bandit.reward_definition import calculate_reward
+from bandit.feature_engineering import prepare_features
 
 class EpsilonGreedy:
     def __init__(self, epsilon, n_arms):
@@ -25,27 +26,27 @@ class EpsilonGreedy:
 
 def run_epsilon_greedy(data, epsilon, n_arms):
     bandit = EpsilonGreedy(epsilon, n_arms)
-    rewards = []
+    rewards = 0
     
     for index, row in data.iterrows():
         chosen_arm = bandit.select_arm()
         reward = calculate_reward(row)
         bandit.update(chosen_arm, reward)
-        rewards.append(reward)
+        rewards += reward
     
     return rewards
 
 if __name__ == "__main__":
     # Load the datasets
-    data_combined = pd.read_csv('../data/train_combined.csv')
-    data_pb = pd.read_csv('../data/train_pb.csv')
-    data_mb = pd.read_csv('../data/train_mb.csv')
+    data_combined = prepare_features(pd.read_csv('data/train_combined.csv'))
+    data_pb = prepare_features(pd.read_csv('data/train_pb.csv'))
+    data_mb = prepare_features(pd.read_csv('data/train_mb.csv'))
     
     # Run epsilon-greedy on each dataset
     rewards_combined = run_epsilon_greedy(data_combined, epsilon=0.1, n_arms=3)
     rewards_pb = run_epsilon_greedy(data_pb, epsilon=0.1, n_arms=3)
     rewards_mb = run_epsilon_greedy(data_mb, epsilon=0.1, n_arms=3)
     
-    print(f"Total Reward for combined dataset: {sum(rewards_combined)}")
-    print(f"Total Reward for PB dataset: {sum(rewards_pb)}")
-    print(f"Total Reward for MB dataset: {sum(rewards_mb)}")
+    print(f"Total Reward for combined dataset: {rewards_combined}")
+    print(f"Total Reward for PB dataset: {rewards_pb}")
+    print(f"Total Reward for MB dataset: {rewards_mb}")

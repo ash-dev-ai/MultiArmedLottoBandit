@@ -4,6 +4,7 @@ import pandas as pd
 import logging
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
+from datetime import datetime
 
 def henon_map(a=1.4, b=0.3, steps=10000):
     x, y = 0, 0
@@ -50,6 +51,13 @@ def evaluate_model(models, test_data, target_columns):
         predictions[target_column] = y_pred
     return predictions
 
+def save_predictions(predictions, model_name):
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    for dataset, dataset_name in zip(predictions, ["combined", "pb", "mb"]):
+        filepath = f"data/predictions/{model_name}_predictions_{dataset_name}_{date_str}.csv"
+        logging.info(f"Saving {dataset_name} predictions to {filepath}")
+        dataset.to_csv(filepath, index=False)
+
 def run_henon(return_predictions=False):
     logging.info("Loading datasets...")
     train_combined = pd.read_csv('data/train_combined.csv')
@@ -68,7 +76,7 @@ def run_henon(return_predictions=False):
     columns_to_use = ['draw_date', 'num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'numSum', 'totalSum', 'day']
     train_combined = train_combined[columns_to_use]
     val_combined = val_combined[columns_to_use]
-    test_combined = test_combined[columns_to_use]
+    test_combined = val_combined[columns_to_use]
     
     train_pb = train_pb[columns_to_use]
     val_pb = val_pb[columns_to_use]
@@ -109,6 +117,9 @@ def run_henon(return_predictions=False):
     models_mb = train_model(train_mb, val_mb, target_columns)
     logging.info(f"Evaluating models with MB test dataset for {target_columns}...")
     predictions_mb = evaluate_model(models_mb, test_mb, target_columns)
+    
+    # Save predictions
+    save_predictions([pd.DataFrame(predictions_combined), pd.DataFrame(predictions_pb), pd.DataFrame(predictions_mb)], "henon")
     
     if return_predictions:
         return predictions_combined, predictions_pb, predictions_mb
