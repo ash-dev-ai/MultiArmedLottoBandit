@@ -6,10 +6,10 @@ from collections import Counter
 
 PREDICTIONS_DIR = 'data/predictions'
 
-def read_predictions(prefix):
-    files = [f for f in os.listdir(PREDICTIONS_DIR) if f.startswith(prefix)]
+def read_predictions(prefix, dataset_type):
+    files = [f for f in os.listdir(PREDICTIONS_DIR) if f.startswith(prefix) and dataset_type in f]
     if not files:
-        logging.error(f"No prediction files found for {prefix}.")
+        logging.error(f"No prediction files found for {prefix} with type {dataset_type}.")
         return None
     predictions = []
     for file in files:
@@ -20,12 +20,10 @@ def read_predictions(prefix):
     return combined_predictions
 
 def get_all_predictions():
-    rossler_predictions = read_predictions("rossler")
-    chua_predictions = read_predictions("chua")
-    henon_predictions = read_predictions("henon")
-    logistic_predictions = read_predictions("logistic")
-    lorenz96_predictions = read_predictions("lorenz96")
-    return rossler_predictions, chua_predictions, henon_predictions, logistic_predictions, lorenz96_predictions
+    combined = [read_predictions(model, "combined") for model in ["rossler", "chua", "henon", "logistic", "lorenz96"]]
+    pb = [read_predictions(model, "pb") for model in ["rossler", "chua", "henon", "logistic", "lorenz96"]]
+    mb = [read_predictions(model, "mb") for model in ["rossler", "chua", "henon", "logistic", "lorenz96"]]
+    return combined, pb, mb
 
 def ensemble_voting(predictions):
     combined_predictions = []
@@ -41,13 +39,30 @@ def ensemble_voting(predictions):
 
 def run_voting_ensemble():
     logging.info("Running voting ensemble on predictions...")
-    predictions = get_all_predictions()
-    combined_predictions = []
-    for prediction_set in predictions:
+    combined_predictions, pb_predictions, mb_predictions = get_all_predictions()
+
+    logging.info("Top 5 Predictions for combined dataset:")
+    combined_results = []
+    for prediction_set in combined_predictions:
         if prediction_set is not None:
-            combined_predictions.append(ensemble_voting([prediction_set]))
-    logging.info("Top 5 Predictions:")
-    for i, prediction in enumerate(combined_predictions):
+            combined_results.extend(ensemble_voting([prediction_set]))
+    for i, prediction in enumerate(combined_results[:5]):
+        logging.info(f"Prediction {i + 1}: {prediction}")
+
+    logging.info("Top 5 Predictions for PB dataset:")
+    pb_results = []
+    for prediction_set in pb_predictions:
+        if prediction_set is not None:
+            pb_results.extend(ensemble_voting([prediction_set]))
+    for i, prediction in enumerate(pb_results[:5]):
+        logging.info(f"Prediction {i + 1}: {prediction}")
+
+    logging.info("Top 5 Predictions for MB dataset:")
+    mb_results = []
+    for prediction_set in mb_predictions:
+        if prediction_set is not None:
+            mb_results.extend(ensemble_voting([prediction_set]))
+    for i, prediction in enumerate(mb_results[:5]):
         logging.info(f"Prediction {i + 1}: {prediction}")
 
 if __name__ == "__main__":
