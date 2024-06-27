@@ -6,122 +6,108 @@ import numpy as np
 import os
 import glob
 
-# Define the path to the predictions directory
-PREDICTIONS_DIR = 'data/predictions'
-
-def load_data(file_path):
-    """Load the CSV data file."""
-    if not os.path.exists(file_path):
-        logging.error(f"Data file {file_path} not found.")
-        return None
-    return pd.read_csv(file_path)
-
-def preprocess_data(data):
-    """Preprocess data to include only specified columns."""
-    columns_to_use = ['num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'numSum', 'totalSum', 'day', 'date']
-    return data[columns_to_use]
-
-def map_actions_to_numbers(action, max_number):
-    """Map an action to the lottery numbers based on the max_number."""
-    return (action % max_number) + 1
-
-def load_predictions_for_dataset(dataset_name):
-    """Load and combine predictions for a specific dataset (combined, pb, mb) from various algorithms."""
-    pattern = f'*_predictions_{dataset_name}_*.csv'
-    prediction_files = glob.glob(os.path.join(PREDICTIONS_DIR, pattern))
-    
-    combined_predictions = []
-
-    for file in prediction_files:
-        if os.path.exists(file):
-            df = pd.read_csv(file, index_col=0)
-            combined_predictions.append(df)
-        else:
-            logging.warning(f"Prediction file {file} not found.")
-    
-    if combined_predictions:
-        # Concatenate all the predictions into a single DataFrame along the columns
-        combined_df = pd.concat(combined_predictions, axis=1)
-        logging.info(f"Loaded predictions from {len(combined_predictions)} files for dataset: {dataset_name}.")
-        return combined_df
-    else:
-        logging.error(f"No predictions loaded for dataset: {dataset_name}. Check the prediction file paths.")
-        return None
-
-def ensemble_predictions(predictions_df):
-    """Ensemble predictions by averaging and returning as a DataFrame."""
-    if predictions_df is not None:
-        # Group by columns (there might be multiple predictions for the same 'numX' from different models)
-        grouped = predictions_df.groupby(predictions_df.columns, axis=1)
-        # Average predictions from each group
-        ensemble_pred = grouped.mean()
-        # Round to the nearest integer and clip to the valid range (assuming predictions should be whole numbers)
-        ensemble_pred = ensemble_pred.round().clip(lower=1)
-        return ensemble_pred
-    else:
-        logging.error("No predictions data provided for ensembling.")
-        return None
-
-def make_final_predictions_for_dataset(dataset_name, number_type, output_file):
-    """Make final predictions for a specific dataset and save to the specified file."""
-    logging.info(f"Making final predictions for {dataset_name} and saving to {output_file}...")
-
-    # Load and combine predictions from the specified directory for this dataset
-    combined_predictions = load_predictions_for_dataset(dataset_name)
-    
-    if combined_predictions is not None:
-        # Perform ensemble prediction
-        ensemble_pred = ensemble_predictions(combined_predictions)
-        
-        if ensemble_pred is not None:
-            # Convert to the required format for final output
-            final_predictions = []
-            for _, row in ensemble_pred.iterrows():
-                final_row = [map_actions_to_numbers(int(row[f'num{i+1}']), number_type['num1-num5']) for i in range(5)]
-                final_row.append(map_actions_to_numbers(int(row['numA']), number_type['numA']))
-                final_predictions.append(final_row)
-
-            # Convert to DataFrame and save to CSV
-            final_df = pd.DataFrame(final_predictions, columns=['num1', 'num2', 'num3', 'num4', 'num5', 'numA'])
-            final_df.to_csv(output_file, index=False)
-            logging.info(f"Final predictions saved to {output_file}")
-        else:
-            logging.error(f"Failed to ensemble predictions for dataset: {dataset_name}.")
-    else:
-        logging.error(f"Failed to load combined predictions for dataset: {dataset_name}. Skipping final prediction generation.")
-
-def main():
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    logging.info("Starting the prediction process...")
-
-    # Define the state and action space sizes
-    state_space_size = 10  # Number of features used, including 'date'
-    action_space_size = 70  # Max range to cover for num1-num5 for combined (1-70)
-
-    # Define the datasets and their number type constraints
-    datasets = {
-        'combined': {'num1-num5': 70, 'numA': 26},
-        'pb': {'num1-num5': 69, 'numA': 26},
-        'mb': {'num1-num5': 70, 'numA': 25}
-    }
-
-    # Define paths for input data and output predictions
-    base_path = 'data'
-    output_dir = 'reinforce/reinforcement_results'
-    ensure_directories_exist([output_dir])
-
-    # Process each dataset
-    for dataset_name, number_type in datasets.items():
-        output_file = os.path.join(output_dir, f"{dataset_name}_final_predictions.csv")
-        make_final_predictions_for_dataset(dataset_name, number_type, output_file)
-
-    logging.info("Prediction process completed.")
-
 def ensure_directories_exist(dirs):
     """Ensure that the necessary directories exist."""
     for directory in dirs:
         if not os.path.exists(directory):
             os.makedirs(directory)
+
+def load_predictions(directory, dataset_name):
+    """Load all prediction files for a given dataset from the specified directory."""
+    pattern = f'{directory}/*_{dataset_name}_predictions_*.csv'
+    prediction_files = glob.glob(pattern)
+    
+    logging.info(f"Found {len(prediction_files)} prediction files for {dataset_name}.")
+    predictions_list = []
+
+    for file in prediction_files:
+        try:
+            data = pd.read_csv(file)
+            predictions_list.append(data)
+            logging.info(f"Loaded predictions from {file}.")
+        except Exception as e:
+            logging.error(f"Failed to load predictions from {file}: {e}")
+
+    return predictions_list
+
+def generate_multiple_predictions(predictions_list, num_predictions=5):
+    """Generate multiple likely predictions from the list of predictions."""
+    if not predictions_list:
+        logging.error("No predictions to aggregate.")
+        return None
+
+    combined_predictions = pd.concat(predictions_list)
+    logging.info(f"Combined shape: {combined_predictions.shape}")
+
+    # Generate multiple predictions
+    diverse_predictions = []
+    for i in range(num_predictions):
+        sample_predictions = combined_predictions.sample(frac=1, axis=0, replace=True).mean(axis=0)
+        diverse_predictions.append(sample_predictions)
+
+    return diverse_predictions
+
+def map_predictions_to_numbers(predictions, number_type):
+    """Map the predictions to valid lottery number ranges."""
+    mapped_predictions = []
+    for prediction in predictions:
+        mapped = prediction.apply(lambda x: int(round(x)) % number_type['num1-num5'] + 1)
+        mapped_predictions.append(mapped)
+    return mapped_predictions
+
+def make_final_predictions_for_dataset(dataset_name, number_type, output_file, num_predictions=5):
+    """Generate and save final predictions for the specified dataset."""
+    logging.info(f"Generating final predictions for {dataset_name}...")
+
+    prediction_dir = 'data/predictions'
+    predictions_list = load_predictions(prediction_dir, dataset_name)
+
+    if not predictions_list:
+        logging.error(f"No predictions found for {dataset_name}. Skipping final predictions.")
+        return
+
+    multiple_predictions = generate_multiple_predictions(predictions_list, num_predictions)
+
+    if multiple_predictions is None:
+        logging.error(f"Failed to generate multiple predictions for {dataset_name}.")
+        return
+
+    # Convert aggregated predictions to the expected number range
+    columns = ['num1', 'num2', 'num3', 'num4', 'num5', 'numA']
+    final_predictions = []
+
+    for i, prediction in enumerate(multiple_predictions):
+        prediction_df = pd.DataFrame([prediction], columns=columns)
+        prediction_df['numA'] = int(round(prediction['numA'])) % number_type['numA'] + 1
+        final_predictions.append(prediction_df)
+
+    mapped_predictions = map_predictions_to_numbers(final_predictions, number_type)
+
+    # Save each set of predictions to a CSV file
+    for i, mapped in enumerate(mapped_predictions):
+        mapped.to_csv(f"{output_file}_prediction_{i+1}.csv", index=False)
+        logging.info(f"Saved prediction {i+1} to {output_file}_prediction_{i+1}.csv")
+
+def main():
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.info("Starting the prediction aggregation process...")
+
+    # Define the datasets and their number type constraints
+    number_types = {
+        'combined': {'num1-num5': 70, 'numA': 26},
+        'pb': {'num1-num5': 69, 'numA': 26},
+        'mb': {'num1-num5': 70, 'numA': 25}
+    }
+
+    output_dir = 'reinforce/reinforcement_results'
+    ensure_directories_exist([output_dir])
+
+    # Generate and save final predictions for each dataset
+    for dataset_name, number_type in number_types.items():
+        output_file = os.path.join(output_dir, f"{dataset_name}_final_predictions")
+        make_final_predictions_for_dataset(dataset_name, number_type, output_file, num_predictions=5)
+
+    logging.info("Prediction aggregation process completed.")
 
 if __name__ == "__main__":
     main()
