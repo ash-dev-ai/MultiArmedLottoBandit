@@ -1,4 +1,5 @@
 # lorenz96.py
+
 import numpy as np
 import pandas as pd
 import logging
@@ -6,63 +7,89 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
 from datetime import datetime
 
-def lorenz96(F=8, dt=0.01, steps=10000, n=36):
-    x = F * np.ones(n)
-    x[19] += 0.01  # Add small perturbation
-    data = []
+class Lorenz96:
+    def __init__(self, F=8, dt=0.01, steps=10000, n=36):
+        self.F = F
+        self.dt = dt
+        self.steps = steps
+        self.n = n
 
-    def lorenz96_dynamics(x, F):
-        d = np.zeros(n)
-        for i in range(n):
-            d[i] = (x[(i + 1) % n] - x[i - 2]) * x[i - 1] - x[i] + F
-        return d
+    def generate_chaos_data(self):
+        x = self.F * np.ones(self.n)
+        x[19] += 0.01  # Add small perturbation
+        data = []
 
-    for _ in range(steps):
-        dx = lorenz96_dynamics(x, F)
-        x += dx * dt
-        data.append(x.copy())
+        def lorenz96_dynamics(x, F):
+            d = np.zeros(self.n)
+            for i in range(self.n):
+                d[i] = (x[(i + 1) % self.n] - x[i - 2]) * x[i - 1] - x[i] + F
+            return d
 
-    return np.array(data)
+        for _ in range(self.steps):
+            dx = lorenz96_dynamics(x, self.F)
+            x += dx * self.dt
+            data.append(x.copy())
 
-def transform_with_lorenz96(data):
-    chaos_data = lorenz96(steps=len(data))
-    chaos_df = pd.DataFrame(chaos_data, columns=[f'lorenz96_{i}' for i in range(chaos_data.shape[1])])
-    return pd.concat([data.reset_index(drop=True), chaos_df], axis=1)
+        return np.array(data)
 
-def train_model(train_data, val_data, target_columns):
-    models = {}
-    for target_column in target_columns:
-        model = RandomForestRegressor(n_estimators=100, random_state=42)
-        X_train = train_data.drop(columns=target_columns + ['draw_date'])
-        y_train = train_data[target_column]
-        X_val = val_data.drop(columns=target_columns + ['draw_date'])
-        y_val = val_data[target_column]
-        
-        model.fit(X_train, y_train)
-        y_pred = model.predict(X_val)
-        mse = mean_squared_error(y_val, y_pred)
-        logging.info(f'Validation MSE for {target_column}: {mse}')
-        models[target_column] = model
-    return models
+    def transform_with_chaos(self, data):
+        num_rows = len(data)
+        chaos_data = self.generate_chaos_data()
+        # Ensure the chaos data has the same number of rows as the original data
+        chaos_data = chaos_data[:num_rows]
+        chaos_df = pd.DataFrame(chaos_data, columns=[f'lorenz96_{i}' for i in range(chaos_data.shape[1])])
+        transformed_data = pd.concat([data.reset_index(drop=True), chaos_df], axis=1)
+        if transformed_data.isna().sum().sum() > 0:
+            logging.warning(f'Transformed data contains NaNs: \n{transformed_data.isna().sum()}')
+        return transformed_data
 
-def evaluate_model(models, test_data, target_columns):
-    predictions = {}
-    for target_column in target_columns:
-        model = models[target_column]
-        X_test = test_data.drop(columns=target_columns + ['draw_date'])
-        y_test = test_data[target_column]
-        y_pred = model.predict(X_test)
-        mse = mean_squared_error(y_test, y_pred)
-        logging.info(f'Test MSE for {target_column}: {mse}')
-        predictions[target_column] = y_pred
-    return predictions
+class ModelTrainer:
+    def __init__(self, target_columns):
+        self.target_columns = target_columns
+        self.models = {}
 
-def save_predictions(predictions, model_name):
-    date_str = datetime.now().strftime("%Y-%m-%d")
-    for dataset, dataset_name in zip(predictions, ["combined", "pb", "mb"]):
-        filepath = f"data/predictions/{model_name}_predictions_{dataset_name}_{date_str}.csv"
-        logging.info(f"Saving {dataset_name} predictions to {filepath}")
-        dataset.to_csv(filepath, index=False)
+    def train_model(self, train_data, val_data):
+        for target_column in self.target_columns:
+            model = RandomForestRegressor(n_estimators=100, random_state=42)
+            X_train = train_data.drop(columns=self.target_columns + ['date'])
+            y_train = train_data[target_column]
+            X_val = val_data.drop(columns=self.target_columns + ['date'])
+            y_val = val_data[target_column]
+
+            if X_train.isna().sum().sum() > 0:
+                logging.warning(f'X_train contains NaNs: \n{X_train.isna().sum()}')
+            if X_val.isna().sum().sum() > 0:
+                logging.warning(f'X_val contains NaNs: \n{X_val.isna().sum()}')
+
+            model.fit(X_train, y_train)
+            y_pred = model.predict(X_val)
+            mse = mean_squared_error(y_val, y_pred)
+            logging.info(f'Validation MSE for {target_column}: {mse}')
+            self.models[target_column] = model
+
+    def evaluate_model(self, test_data):
+        predictions = {}
+        for target_column in self.target_columns:
+            model = self.models[target_column]
+            X_test = test_data.drop(columns=self.target_columns + ['date'])
+            y_test = test_data[target_column]
+            if X_test.isna().sum().sum() > 0:
+                logging.warning(f'X_test contains NaNs: \n{X_test.isna().sum()}')
+
+            y_pred = model.predict(X_test)
+            mse = mean_squared_error(y_test, y_pred)
+            logging.info(f'Test MSE for {target_column}: {mse}')
+            predictions[target_column] = y_pred
+        return predictions
+
+class PredictionSaver:
+    @staticmethod
+    def save_predictions(predictions, model_name):
+        date_str = datetime.now().strftime("%Y-%m-%d")
+        for dataset, dataset_name in zip(predictions, ["combined", "pb", "mb"]):
+            filepath = f"data/predictions/{model_name}_predictions_{dataset_name}_{date_str}.csv"
+            logging.info(f"Saving {dataset_name} predictions to {filepath}")
+            dataset.to_csv(filepath, index=False)
 
 def run_lorenz96(return_predictions=False):
     logging.info("Loading datasets...")
@@ -79,7 +106,7 @@ def run_lorenz96(return_predictions=False):
     test_mb = pd.read_csv('data/test_mb.csv')
     
     # Use specified columns
-    columns_to_use = ['draw_date', 'num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'numSum', 'totalSum', 'day']
+    columns_to_use = ['num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'numSum', 'totalSum', 'day', 'date']
     train_combined = train_combined[columns_to_use]
     val_combined = val_combined[columns_to_use]
     test_combined = test_combined[columns_to_use]
@@ -93,39 +120,45 @@ def run_lorenz96(return_predictions=False):
     test_mb = test_mb[columns_to_use]
     
     logging.info("Transforming datasets with Lorenz96 Model...")
-    train_combined = transform_with_lorenz96(train_combined)
-    val_combined = transform_with_lorenz96(val_combined)
-    test_combined = transform_with_lorenz96(test_combined)
+    lorenz = Lorenz96(steps=len(train_combined))
+    train_combined = lorenz.transform_with_chaos(train_combined)
+    val_combined = lorenz.transform_with_chaos(val_combined)
+    test_combined = lorenz.transform_with_chaos(test_combined)
     
-    train_pb = transform_with_lorenz96(train_pb)
-    val_pb = transform_with_lorenz96(val_pb)
-    test_pb = transform_with_lorenz96(test_pb)
+    lorenz = Lorenz96(steps=len(train_pb))
+    train_pb = lorenz.transform_with_chaos(train_pb)
+    val_pb = lorenz.transform_with_chaos(val_pb)
+    test_pb = lorenz.transform_with_chaos(test_pb)
     
-    train_mb = transform_with_lorenz96(train_mb)
-    val_mb = transform_with_lorenz96(val_mb)
-    test_mb = transform_with_lorenz96(test_mb)
+    lorenz = Lorenz96(steps=len(train_mb))
+    train_mb = lorenz.transform_with_chaos(train_mb)
+    val_mb = lorenz.transform_with_chaos(val_mb)
+    test_mb = lorenz.transform_with_chaos(test_mb)
     
     # Define target columns
-    target_columns = ['num1', 'num2', 'num3', 'num4', 'num5', 'numA']
+    target_columns = ['numSum', 'totalSum']
     
     # Train and evaluate the model
     logging.info(f"Training models with combined dataset for {target_columns}...")
-    models_combined = train_model(train_combined, val_combined, target_columns)
+    trainer_combined = ModelTrainer(target_columns)
+    trainer_combined.train_model(train_combined, val_combined)
     logging.info(f"Evaluating models with combined test dataset for {target_columns}...")
-    predictions_combined = evaluate_model(models_combined, test_combined, target_columns)
+    predictions_combined = trainer_combined.evaluate_model(test_combined)
     
     logging.info(f"Training models with PB dataset for {target_columns}...")
-    models_pb = train_model(train_pb, val_pb, target_columns)
+    trainer_pb = ModelTrainer(target_columns)
+    trainer_pb.train_model(train_pb, val_pb)
     logging.info(f"Evaluating models with PB test dataset for {target_columns}...")
-    predictions_pb = evaluate_model(models_pb, test_pb, target_columns)
+    predictions_pb = trainer_pb.evaluate_model(test_pb)
     
     logging.info(f"Training models with MB dataset for {target_columns}...")
-    models_mb = train_model(train_mb, val_mb, target_columns)
+    trainer_mb = ModelTrainer(target_columns)
+    trainer_mb.train_model(train_mb, val_mb)
     logging.info(f"Evaluating models with MB test dataset for {target_columns}...")
-    predictions_mb = evaluate_model(models_mb, test_mb, target_columns)
+    predictions_mb = trainer_mb.evaluate_model(test_mb)
     
     # Save predictions
-    save_predictions([pd.DataFrame(predictions_combined), pd.DataFrame(predictions_pb), pd.DataFrame(predictions_mb)], "lorenz96")
+    PredictionSaver.save_predictions([pd.DataFrame(predictions_combined), pd.DataFrame(predictions_pb), pd.DataFrame(predictions_mb)], "lorenz96")
     
     if return_predictions:
         return predictions_combined, predictions_pb, predictions_mb

@@ -9,8 +9,8 @@ from reinforce.policy_gradient import PolicyGradient
 from reinforce.actor_critic import ActorCritic
 from reinforce.ppo import PPOAgent
 from reinforce.mcts import MCTS
-from reinforce.reinforced_predictions import make_final_predictions_for_dataset, ensure_directories_exist
 from reinforce.prep_reinforcement import preprocess_predictions
+from reinforce.reinforced_predictions import make_final_predictions_for_dataset, ensure_directories_exist
 
 def load_data(file_path):
     """Load the CSV data file."""
@@ -83,7 +83,6 @@ def main():
     data_pb_path = 'data/data_pb.csv'
     data_mb_path = 'data/data_mb.csv'
     output_dir = 'reinforce/reinforcement_results'
-    prediction_input_dir = 'data/predictions'
     
     ensure_directories_exist([output_dir])
 
@@ -128,9 +127,12 @@ def main():
     logging.info("Running MCTS...")
     run_mcts(state_space_size, action_space_size)
 
-    # Preprocess predictions before generating final predictions
+    # Preprocess predictions
     logging.info("Preprocessing predictions...")
-    preprocess_predictions(prediction_input_dir, output_dir)
+    input_dir = 'data/predictions'
+    output_dir = 'data/preprocessed_predictions'
+    ensure_directories_exist([output_dir])
+    preprocess_predictions(input_dir, output_dir)
 
     # Generate predictions for the next draw using aggregated predictions
     logging.info("Generating aggregated predictions for the next draw...")
@@ -147,4 +149,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

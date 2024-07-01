@@ -1,3 +1,5 @@
+#rnn_ensemble.py
+
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -8,83 +10,125 @@ import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Function to create LSTM model
-def create_lstm_model(input_shape):
-    model = models.Sequential([
-        layers.LSTM(64, activation='tanh', input_shape=input_shape, return_sequences=True),
-        layers.LSTM(64, activation='tanh'),
-        layers.Dense(6)  # Output layer for 6 predictions
-    ])
-    model.compile(optimizer='adam', loss='mse')
-    return model
-
-# Function to create GRU model
-def create_gru_model(input_shape):
-    model = models.Sequential([
-        layers.GRU(64, activation='tanh', input_shape=input_shape, return_sequences=True),
-        layers.GRU(64, activation='tanh'),
-        layers.Dense(6)  # Output layer for 6 predictions
-    ])
-    model.compile(optimizer='adam', loss='mse')
-    return model
-
-# Prepare the data
-def prepare_rnn_data(data):
-    """Prepare features for the RNN models."""
-    features = data[['num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'numSum', 'totalSum', 'day', 'date']].copy()
-    targets = data[['num1', 'num2', 'num3', 'num4', 'num5', 'numA']].copy()
+class RNNModel:
+    def __init__(self, model_type, input_shape):
+        self.model_type = model_type
+        self.model = self.create_model(input_shape)
     
-    # Convert to 3D shape (samples, timesteps, features)
-    features = np.expand_dims(features.values, axis=1)
-    targets = targets.values
+    def create_model(self, input_shape):
+        if self.model_type == 'lstm':
+            model = models.Sequential([
+                layers.LSTM(64, activation='tanh', input_shape=input_shape, return_sequences=True),
+                layers.LSTM(64, activation='tanh'),
+                layers.Dense(6)  # Output layer for 6 predictions
+            ])
+        elif self.model_type == 'gru':
+            model = models.Sequential([
+                layers.GRU(64, activation='tanh', input_shape=input_shape, return_sequences=True),
+                layers.GRU(64, activation='tanh'),
+                layers.Dense(6)  # Output layer for 6 predictions
+            ])
+        else:
+            raise ValueError("Invalid model type. Choose either 'lstm' or 'gru'.")
+        model.compile(optimizer='adam', loss='mse')
+        return model
+
+    def train(self, X_train, y_train, X_val, y_val, epochs=50, batch_size=32):
+        self.model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=epochs, batch_size=batch_size, verbose=1)
+
+    def predict(self, X):
+        return self.model.predict(X)
+
+    def save(self, path):
+        self.model.save(path)
+        logging.info(f"Model saved to {path}")
+
+class RNNEnsemble:
+    def __init__(self):
+        self.models = {}
     
-    return features, targets
+    def prepare_data(self, data):
+        features = data[['num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'numSum', 'totalSum', 'day', 'date']].copy()
+        targets = data[['num1', 'num2', 'num3', 'num4', 'num5', 'numA']].copy()
+        
+        features = np.expand_dims(features.values, axis=1)
+        targets = targets.values
+        
+        return features, targets
 
-def train_rnn_ensemble(train_data, val_data, dataset_type):
-    X_train, y_train = prepare_rnn_data(train_data)
-    X_val, y_val = prepare_rnn_data(val_data)
-    input_shape = (X_train.shape[1], X_train.shape[2])
+    def train_ensemble(self, train_data, val_data):
+        X_train, y_train = self.prepare_data(train_data)
+        X_val, y_val = self.prepare_data(val_data)
+        input_shape = (X_train.shape[1], X_train.shape[2])
 
-    # Train LSTM model
-    lstm_model = create_lstm_model(input_shape)
-    lstm_model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=50, batch_size=32, verbose=0)
+        logging.info("Training LSTM model...")
+        lstm_model = RNNModel('lstm', input_shape)
+        lstm_model.train(X_train, y_train, X_val, y_val)
+        self.models['lstm'] = lstm_model
+
+        logging.info("Training GRU model...")
+        gru_model = RNNModel('gru', input_shape)
+        gru_model.train(X_train, y_train, X_val, y_val)
+        self.models['gru'] = gru_model
+
+        self.save_models('stacked/models')
     
-    # Train GRU model
-    gru_model = create_gru_model(input_shape)
-    gru_model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=50, batch_size=32, verbose=0)
+    def evaluate_ensemble(self, test_data):
+        X_test, _ = self.prepare_data(test_data)
+        predictions = {name: model.predict(X_test) for name, model in self.models.items()}
+        return predictions
 
-    models = {
-        'lstm': lstm_model,
-        'gru': gru_model
-    }
+    def save_models(self, directory):
+        os.makedirs(directory, exist_ok=True)
+        for name, model in self.models.items():
+            model.save(os.path.join(directory, f'{name}_model.h5'))
 
-    save_models(models, f'stacked/models')
+    def validate_predictions(self, predictions_df):
+        # Check for the presence of 'numSum' and 'totalSum' columns
+        if 'numSum' not in predictions_df.columns or 'totalSum' not in predictions_df.columns:
+            logging.error("Required columns 'numSum' or 'totalSum' are missing in the predictions dataframe.")
+            return predictions_df
 
-    return models
+        predictions_df['predicted_numSum'] = predictions_df[['num1', 'num2', 'num3', 'num4', 'num5']].sum(axis=1)
+        predictions_df['predicted_totalSum'] = predictions_df['predicted_numSum'] + predictions_df['numA']
 
-def evaluate_rnn_ensemble(models, test_data):
-    X_test, _ = prepare_rnn_data(test_data)
-    predictions = {name: model.predict(X_test) for name, model in models.items()}
-    return predictions
+        invalid_rows = predictions_df[
+            (predictions_df['predicted_numSum'] != predictions_df['numSum']) |
+            (predictions_df['predicted_totalSum'] != predictions_df['totalSum'])
+        ]
+        if not invalid_rows.empty:
+            logging.warning(f"Invalid predictions found:\n{invalid_rows}")
+        return predictions_df[~predictions_df.index.isin(invalid_rows.index)]
 
-def save_models(models, directory):
-    os.makedirs(directory, exist_ok=True)
-    for name, model in models.items():
-        model.save(os.path.join(directory, f'{name}_model.h5'))
+    def save_predictions(self, predictions, dataset_type):
+        today = datetime.today().strftime('%Y-%m-%d')
+        predictions_dir = 'data/predictions'
+        os.makedirs(predictions_dir, exist_ok=True)
+        
+        for model_name, preds in predictions.items():
+            predictions_df = pd.DataFrame(preds, columns=['num1', 'num2', 'num3', 'num4', 'num5', 'numA'])
+            
+            # Add 'numSum' and 'totalSum' columns before validation
+            predictions_df['numSum'] = predictions_df[['num1', 'num2', 'num3', 'num4', 'num5']].sum(axis=1)
+            predictions_df['totalSum'] = predictions_df['numSum'] + predictions_df['numA']
+            
+            predictions_df = self.validate_predictions(predictions_df)
+            predictions_file = os.path.join(predictions_dir, f'{model_name}_{dataset_type}_predictions_{today}.csv')
+            predictions_df.to_csv(predictions_file, index=False)
+            logging.info(f"Predictions saved to {predictions_file}")
 
-def save_predictions(predictions, dataset_name, dataset_type):
-    today = datetime.today().strftime('%Y-%m-%d')
-    predictions_dir = 'data/predictions'
-    os.makedirs(predictions_dir, exist_ok=True)
-    
-    for model_name, preds in predictions.items():
-        predictions_df = pd.DataFrame(preds, columns=['num1', 'num2', 'num3', 'num4', 'num5', 'numA'])
-        predictions_file = os.path.join(predictions_dir, f'{model_name}_{dataset_type}_predictions_{today}.csv')
-        predictions_df.to_csv(predictions_file, index=False)
-        logging.info(f"Predictions saved to {predictions_file}")
+    def load_latest_predictions(self, model_name, dataset_type):
+        predictions_dir = 'data/predictions'
+        files = [f for f in os.listdir(predictions_dir) if f.startswith(model_name) and dataset_type in f]
+        if not files:
+            logging.error(f"No prediction files found for {model_name} with type {dataset_type}.")
+            return None
+        latest_file = max(files, key=lambda x: datetime.strptime(x.split('_')[-1].split('.')[0], '%Y-%m-%d'))
+        path = os.path.join(predictions_dir, latest_file)
+        logging.info(f"Loading latest predictions from {path}")
+        return pd.read_csv(path)
 
 def main():
-    # Load datasets
     train_combined = pd.read_csv('data/train_combined.csv')
     val_combined = pd.read_csv('data/val_combined.csv')
     test_combined = pd.read_csv('data/test_combined.csv')
@@ -97,30 +141,34 @@ def main():
     val_mb = pd.read_csv('data/val_mb.csv')
     test_mb = pd.read_csv('data/test_mb.csv')
 
-    # Train and evaluate RNN ensemble for each dataset type
+    ensemble = RNNEnsemble()
+
     logging.info("Training RNN ensemble for combined dataset...")
-    models_combined = train_rnn_ensemble(train_combined, val_combined, 'combined')
-    predictions_combined = evaluate_rnn_ensemble(models_combined, test_combined)
-    save_predictions(predictions_combined, 'combined', 'combined')
+    ensemble.train_ensemble(train_combined, val_combined)
+    predictions_combined = ensemble.evaluate_ensemble(test_combined)
+    ensemble.save_predictions(predictions_combined, 'combined')
 
     logging.info("Training RNN ensemble for PB dataset...")
-    models_pb = train_rnn_ensemble(train_pb, val_pb, 'pb')
-    predictions_pb = evaluate_rnn_ensemble(models_pb, test_pb)
-    save_predictions(predictions_pb, 'pb', 'pb')
+    ensemble.train_ensemble(train_pb, val_pb)
+    predictions_pb = ensemble.evaluate_ensemble(test_pb)
+    ensemble.save_predictions(predictions_pb, 'pb')
 
     logging.info("Training RNN ensemble for MB dataset...")
-    models_mb = train_rnn_ensemble(train_mb, val_mb, 'mb')
-    predictions_mb = evaluate_rnn_ensemble(models_mb, test_mb)
-    save_predictions(predictions_mb, 'mb', 'mb')
+    ensemble.train_ensemble(train_mb, val_mb)
+    predictions_mb = ensemble.evaluate_ensemble(test_mb)
+    ensemble.save_predictions(predictions_mb, 'mb')
 
-    logging.info("Predictions for combined dataset:")
-    print(predictions_combined)
+    logging.info("Loading latest predictions for combined dataset:")
+    latest_combined = ensemble.load_latest_predictions('lstm', 'combined')
+    print(latest_combined)
 
-    logging.info("Predictions for PB dataset:")
-    print(predictions_pb)
+    logging.info("Loading latest predictions for PB dataset:")
+    latest_pb = ensemble.load_latest_predictions('gru', 'pb')
+    print(latest_pb)
 
-    logging.info("Predictions for MB dataset:")
-    print(predictions_mb)
+    logging.info("Loading latest predictions for MB dataset:")
+    latest_mb = ensemble.load_latest_predictions('lstm', 'mb')
+    print(latest_mb)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

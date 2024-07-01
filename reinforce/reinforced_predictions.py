@@ -36,13 +36,13 @@ def generate_multiple_predictions(predictions_list, num_predictions=5):
         logging.error("No predictions to aggregate.")
         return None
 
-    combined_predictions = pd.concat(predictions_list)
+    combined_predictions = pd.concat(predictions_list, axis=0)
     logging.info(f"Combined shape: {combined_predictions.shape}")
 
     # Generate multiple predictions
     diverse_predictions = []
     for i in range(num_predictions):
-        sample_predictions = combined_predictions.sample(frac=1, axis=0, replace=True).mean(axis=0)
+        sample_predictions = combined_predictions.sample(n=len(predictions_list), replace=True).mean(axis=0)
         diverse_predictions.append(sample_predictions)
 
     return diverse_predictions
@@ -54,6 +54,37 @@ def map_predictions_to_numbers(predictions, number_type):
         mapped = prediction.apply(lambda x: int(round(x)) % number_type['num1-num5'] + 1)
         mapped_predictions.append(mapped)
     return mapped_predictions
+
+def validate_predictions(predictions, historical_data, number_type):
+    """Validate predictions based on given rules."""
+    valid_predictions = []
+    for prediction in predictions:
+        num1_to_num5 = prediction[:5].values
+        numA = prediction['numA']
+
+        # Rule 1: Ensure num1 to num5 contain 2 odd and 3 even or 2 even and 3 odd values
+        odds = np.sum(num1_to_num5 % 2 != 0)
+        evens = np.sum(num1_to_num5 % 2 == 0)
+        if not (odds in [2, 3] and evens in [2, 3]):
+            continue
+
+        # Rule 2: Ensure not too similar to past winning numbers
+        historical_matches = historical_data.apply(lambda row: (row[:5] == num1_to_num5).sum(), axis=1)
+        if (historical_matches >= 3).any():
+            continue
+
+        # Rule 3: Numbers for num1 to num5 cannot repeat per draw
+        if len(set(num1_to_num5)) != len(num1_to_num5):
+            continue
+
+        # Rule 4: Ensure numSum of num1 to num5 falls into the range 140-240
+        numSum = num1_to_num5.sum()
+        if not (140 <= numSum <= 240):
+            continue
+
+        valid_predictions.append(prediction)
+
+    return valid_predictions
 
 def make_final_predictions_for_dataset(dataset_name, number_type, output_file, num_predictions=5):
     """Generate and save final predictions for the specified dataset."""
@@ -83,10 +114,17 @@ def make_final_predictions_for_dataset(dataset_name, number_type, output_file, n
 
     mapped_predictions = map_predictions_to_numbers(final_predictions, number_type)
 
-    # Save each set of predictions to a CSV file
-    for i, mapped in enumerate(mapped_predictions):
-        mapped.to_csv(f"{output_file}_prediction_{i+1}.csv", index=False)
-        logging.info(f"Saved prediction {i+1} to {output_file}_prediction_{i+1}.csv")
+    # Load historical data
+    historical_data_path = f'data/data_{dataset_name}.csv'
+    historical_data = pd.read_csv(historical_data_path)[['num1', 'num2', 'num3', 'num4', 'num5', 'numA']]
+
+    # Validate predictions
+    validated_predictions = validate_predictions(mapped_predictions, historical_data, number_type)
+
+    # Save all predictions to a single CSV file
+    all_predictions_df = pd.concat(validated_predictions, axis=0)
+    all_predictions_df.to_csv(f"{output_file}.csv", index=False)
+    logging.info(f"Saved final predictions to {output_file}.csv")
 
 def main():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
