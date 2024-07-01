@@ -32,22 +32,31 @@ data_combined_path = os.path.join(script_dir, '..', 'data', 'data_combined.csv')
 data_pb_path = os.path.join(script_dir, '..', 'data', 'data_pb.csv')
 data_mb_path = os.path.join(script_dir, '..', 'data', 'data_mb.csv')
 
-# Load the datasets from the constructed paths
-data_combined = pd.read_csv(data_combined_path)
-data_pb = pd.read_csv(data_pb_path)
-data_mb = pd.read_csv(data_mb_path)
+# Check if the files exist before attempting to read them
+datasets = {}
+if os.path.exists(data_combined_path):
+    data_combined = pd.read_csv(data_combined_path)
+    datasets['combined'] = data_combined
+else:
+    logging.warning(f"File not found: {data_combined_path}")
 
-# Create a dictionary to process each dataset
-datasets = {
-    'combined': data_combined,
-    'pb': data_pb,
-    'mb': data_mb
-}
+if os.path.exists(data_pb_path):
+    data_pb = pd.read_csv(data_pb_path)
+    datasets['pb'] = data_pb
+else:
+    logging.warning(f"File not found: {data_pb_path}")
 
-# Apply the transformations to each dataset
+if os.path.exists(data_mb_path):
+    data_mb = pd.read_csv(data_mb_path)
+    datasets['mb'] = data_mb
+else:
+    logging.warning(f"File not found: {data_mb_path}")
+
+# Apply the transformations to each dataset if loaded successfully
 for name, dataset in datasets.items():
     add_day_column(dataset, name)
     add_date_column(dataset, name)
 
-# Example: Display the modified 'combined' dataset to verify changes
-print(datasets['combined'].head())
+# Example: Display the modified datasets to verify changes
+for name, dataset in datasets.items():
+    print(f"{name} dataset head:\n{dataset.head()}")

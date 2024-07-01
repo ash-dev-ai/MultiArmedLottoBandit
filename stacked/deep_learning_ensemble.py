@@ -1,5 +1,3 @@
-# deep_learning_ensemble.py
-
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -61,31 +59,34 @@ class DeepLearningEnsemble:
 
     def prepare_data(self, data):
         features = data[['num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'numSum', 'totalSum', 'day', 'date']].copy()
-        targets = data[['num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'numSum', 'totalSum']].copy()
-        features = features.values
+        targets = data[['num1', 'num2', 'num3', 'num4', 'num5', 'numA']].copy()
+        
+        features = np.expand_dims(features.values, axis=1)
         targets = targets.values
+        
         return features, targets
 
     def train_ensemble(self, train_data, val_data, dataset_type):
-        features, targets = self.prepare_data(train_data)
-        input_shape = features.shape[1:]
-        output_shape = targets.shape[1]
+        X_train, y_train = self.prepare_data(train_data)
+        X_val, y_val = self.prepare_data(val_data)
+        input_shape = (X_train.shape[1], X_train.shape[2])
+        output_shape = y_train.shape[1]
 
         logging.info(f"Training PINN model for {dataset_type} dataset...")
         pinn_model = DeepLearningModel('pinn', input_shape, output_shape)
-        pinn_model.train(features, targets)
+        pinn_model.train(X_train, y_train, epochs=50, batch_size=32)
         self.models['pinn'] = pinn_model
 
         logging.info(f"Training DBN model for {dataset_type} dataset...")
         dbn_model = DeepLearningModel('dbn', input_shape, output_shape)
-        dbn_model.train(features, targets)
+        dbn_model.train(X_train, y_train, epochs=50, batch_size=32)
         self.models['dbn'] = dbn_model
 
         self.save_models('stacked/models', dataset_type)
 
     def evaluate_ensemble(self, test_data):
-        features, _ = self.prepare_data(test_data)
-        predictions = {name: model.predict(features) for name, model in self.models.items()}
+        X_test, _ = self.prepare_data(test_data)
+        predictions = {name: model.predict(X_test) for name, model in self.models.items()}
         return predictions
 
     def save_models(self, directory, dataset_type):
@@ -94,13 +95,20 @@ class DeepLearningEnsemble:
             model.save(os.path.join(directory, f'{name}_model_{dataset_type}.h5'))
 
     def validate_predictions(self, predictions_df):
+        if 'numSum' not in predictions_df.columns or 'totalSum' not in predictions_df.columns:
+            logging.error("Required columns 'numSum' or 'totalSum' are missing in the predictions dataframe.")
+            return predictions_df
+
+        predictions_df['predicted_numSum'] = predictions_df[['num1', 'num2', 'num3', 'num4', 'num5']].sum(axis=1)
+        predictions_df['predicted_totalSum'] = predictions_df['predicted_numSum'] + predictions_df['numA']
+
         invalid_rows = predictions_df[
-            (predictions_df[['num1', 'num2', 'num3', 'num4', 'num5', 'numA']].sum(axis=1) != predictions_df['numSum']) |
-            (predictions_df[['num1', 'num2', 'num3', 'num4', 'num5', 'numA']].sum(axis=1) != predictions_df['totalSum'])
+            (predictions_df['predicted_numSum'] != predictions_df['numSum']) |
+            (predictions_df['predicted_totalSum'] != predictions_df['totalSum'])
         ]
         if not invalid_rows.empty:
             logging.warning(f"Invalid predictions found:\n{invalid_rows}")
-        return predictions_df[~invalid_rows.index.isin(invalid_rows.index)]
+        return predictions_df[~predictions_df.index.isin(invalid_rows.index)]
 
     def save_predictions(self, predictions, dataset_type):
         today = datetime.today().strftime('%Y-%m-%d')
@@ -108,7 +116,12 @@ class DeepLearningEnsemble:
         os.makedirs(predictions_dir, exist_ok=True)
         
         for model_name, preds in predictions.items():
-            predictions_df = pd.DataFrame(preds, columns=['num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'numSum', 'totalSum'])
+            preds = np.squeeze(preds)  # Remove single-dimensional entries from the shape
+            predictions_df = pd.DataFrame(preds, columns=['num1', 'num2', 'num3', 'num4', 'num5', 'numA'])
+            
+            predictions_df['numSum'] = predictions_df[['num1', 'num2', 'num3', 'num4', 'num5']].sum(axis=1)
+            predictions_df['totalSum'] = predictions_df['numSum'] + predictions_df['numA']
+            
             predictions_df = self.validate_predictions(predictions_df)
             predictions_file = os.path.join(predictions_dir, f'{model_name}_{dataset_type}_predictions_{today}.csv')
             predictions_df.to_csv(predictions_file, index=False)

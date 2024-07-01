@@ -7,10 +7,24 @@ import os
 import logging
 import pickle
 from sklearn.linear_model import Ridge
+from sklearn.preprocessing import StandardScaler
 from stacked.libs.pyESN.pyESN import ESN
-from reservoirpy.nodes import Reservoir, Ridge as LSMRidge  # Liquid State Machine implementation
+from reservoirpy.nodes import Reservoir, Ridge as LSMRidge
+from scipy import linalg
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def remove_correlated_features(X, threshold=0.95):
+    correlated_features = set()
+    correlation_matrix = pd.DataFrame(X).corr()
+
+    for i in range(len(correlation_matrix.columns)):
+        for j in range(i):
+            if abs(correlation_matrix.iloc[i, j]) > threshold:
+                colname = correlation_matrix.columns[i]
+                correlated_features.add(colname)
+    
+    return pd.DataFrame(X).drop(labels=correlated_features, axis=1).values
 
 class ReservoirModel:
     def __init__(self, model_type, n_inputs=None, n_outputs=None, reservoir_size=500):
@@ -86,12 +100,17 @@ class ReservoirModel:
 class ReservoirEnsemble:
     def __init__(self):
         self.models = {}
+        self.scaler = StandardScaler()
 
     def prepare_data(self, data):
-        X = data[['num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'numSum', 'totalSum', 'day', 'date']].copy()
-        y = data[['num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'numSum', 'totalSum']].copy()
-        X = (X - X.mean()) / X.std()
-        return X.values, y.values
+        features = data[['num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'numSum', 'totalSum', 'day', 'date']].copy()
+        features = remove_correlated_features(features)
+        targets = data[['num1', 'num2', 'num3', 'num4', 'num5', 'numA']].copy()
+        
+        features = self.scaler.fit_transform(features)
+        targets = targets.values
+        
+        return features, targets
 
     def train_ensemble(self, train_data, val_data):
         X_train, y_train = self.prepare_data(train_data)
@@ -118,9 +137,16 @@ class ReservoirEnsemble:
             model.save(os.path.join(directory, name))
 
     def validate_predictions(self, predictions_df):
+        if 'numSum' not in predictions_df.columns or 'totalSum' not in predictions_df.columns:
+            logging.error("Required columns 'numSum' or 'totalSum' are missing in the predictions dataframe.")
+            return predictions_df
+
+        predictions_df['predicted_numSum'] = predictions_df[['num1', 'num2', 'num3', 'num4', 'num5']].sum(axis=1)
+        predictions_df['predicted_totalSum'] = predictions_df['predicted_numSum'] + predictions_df['numA']
+
         invalid_rows = predictions_df[
-            (predictions_df[['num1', 'num2', 'num3', 'num4', 'num5', 'numA']].sum(axis=1) != predictions_df['numSum']) |
-            (predictions_df[['num1', 'num2', 'num3', 'num4', 'num5', 'numA']].sum(axis=1) != predictions_df['totalSum'])
+            (predictions_df['predicted_numSum'] != predictions_df['numSum']) |
+            (predictions_df['predicted_totalSum'] != predictions_df['totalSum'])
         ]
         if not invalid_rows.empty:
             logging.warning(f"Invalid predictions found:\n{invalid_rows}")
@@ -132,7 +158,11 @@ class ReservoirEnsemble:
         os.makedirs(predictions_dir, exist_ok=True)
         
         for model_name, preds in predictions.items():
-            predictions_df = pd.DataFrame(preds, columns=['num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'numSum', 'totalSum'])
+            predictions_df = pd.DataFrame(preds, columns=['num1', 'num2', 'num3', 'num4', 'num5', 'numA'])
+            
+            predictions_df['numSum'] = predictions_df[['num1', 'num2', 'num3', 'num4', 'num5']].sum(axis=1)
+            predictions_df['totalSum'] = predictions_df['numSum'] + predictions_df['numA']
+            
             predictions_df = self.validate_predictions(predictions_df)
             predictions_file = os.path.join(predictions_dir, f'{model_name}_{dataset_type}_predictions_{today}.csv')
             predictions_df.to_csv(predictions_file, index=False)
@@ -182,16 +212,15 @@ def main():
     logging.info("Loading latest predictions for combined dataset:")
     latest_combined = ensemble.load_latest_predictions('esn', 'combined')
     print(latest_combined)
-
+    
     logging.info("Loading latest predictions for PB dataset:")
     latest_pb = ensemble.load_latest_predictions('lsm', 'pb')
     print(latest_pb)
-
+    
     logging.info("Loading latest predictions for MB dataset:")
     latest_mb = ensemble.load_latest_predictions('esn', 'mb')
     print(latest_mb)
-
+    
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    main
-()
+    main()
