@@ -1,54 +1,54 @@
 Statistics for num1:
-Mean: 11.44140862173649
+Mean: 11.4375
 Median: 9.0
 Mode: 1 (count: 124)
-Standard Deviation: 9.20662289786396
-Variance: 84.76190518347299
+Standard Deviation: 9.20519515219102
+Variance: 84.73561778992106
 Minimum: 1
 Maximum: 52
 
 Statistics for num2:
-Mean: 22.2434729811779
+Mean: 22.235436893203882
 Median: 21.0
 Mode: 12 (count: 62)
-Standard Deviation: 11.581277243239617
-Variance: 134.12598258477982
+Standard Deviation: 11.582356053843554
+Variance: 134.15097175800645
 Minimum: 2
 Maximum: 61
 
 Statistics for num3:
-Mean: 33.680631451123254
+Mean: 33.679611650485434
 Median: 34.0
 Mode: 37 (count: 55)
-Standard Deviation: 12.437157027840824
-Variance: 154.68287493517042
+Standard Deviation: 12.433449677677741
+Variance: 154.59067088734474
 Minimum: 3
 Maximum: 65
 
 Statistics for num4:
-Mean: 44.71584699453552
+Mean: 44.7123786407767
 Median: 46.0
 Mode: 53 (count: 60)
-Standard Deviation: 12.073766194923348
-Variance: 145.7758301296738
+Standard Deviation: 12.070921455879265
+Variance: 145.70714479400638
 Minimum: 7
 Maximum: 68
 
 Statistics for num5:
-Mean: 55.36612021857923
+Mean: 55.36589805825243
 Median: 57.0
 Mode: 69 (count: 92)
-Standard Deviation: 10.167976482675677
-Variance: 103.38774575224562
+Standard Deviation: 10.16489319748995
+Variance: 103.32505371637748
 Minimum: 19
 Maximum: 69
 
 Statistics for numA:
-Mean: 15.415300546448087
+Mean: 15.41140776699029
 Median: 15.0
 Mode: 24 (count: 70)
-Standard Deviation: 9.124757505266011
-Variance: 83.26119952990838
+Standard Deviation: 9.12335572210394
+Variance: 83.23561963204668
 Minimum: 1
 Maximum: 39
 

@@ -10,7 +10,7 @@ class PatternAnalysis:
     def __init__(self, predictions_dir, data_dir, analysis_dir):
         """
         Initialize the PatternAnalysis with directories for predictions, data, and where to save analysis results.
-        
+
         Parameters:
         - predictions_dir: Directory containing prediction CSV files.
         - data_dir: Directory containing actual data CSV files.
@@ -45,59 +45,61 @@ class PatternAnalysis:
     def load_predictions(self):
         """
         Load prediction files and organize them by dataset type.
-        
+
         Returns:
         A dictionary with dataset types ('combined', 'pb', 'mb') as keys and model prediction DataFrames as values.
         """
         predictions = {'combined': {}, 'pb': {}, 'mb': {}}
-        
         files = [f for f in os.listdir(self.predictions_dir) if f.endswith('.csv')]
+        
         if not files:
             logging.error(f"No prediction files found in {self.predictions_dir}.")
             return predictions
-        
+
         for file in files:
             path = os.path.join(self.predictions_dir, file)
             model_name, dataset_type = file.split('_')[:2]
             if dataset_type in predictions:
                 predictions[dataset_type][model_name] = pd.read_csv(path)
-        
+
         return predictions
 
     def analyze_and_compare(self, predictions, actuals, dataset_type):
         """
         Analyze patterns in predictions and compare with actual data.
-        
+
         Parameters:
         - predictions: Dictionary of predictions organized by model.
         - actuals: DataFrame of actual data.
         - dataset_type: Type of dataset being analyzed ('combined', 'pb', 'mb').
         """
         logging.info(f"Analyzing and comparing patterns for {dataset_type} dataset...")
-        
+
         # Analyze patterns in predictions
         for model, preds in predictions[dataset_type].items():
             pattern_summary = self.analyze_patterns(preds, model, dataset_type)
-
             # Compare with actual data
             self.compare_with_actuals(pattern_summary, actuals, model, dataset_type)
 
     def analyze_patterns(self, preds, model, dataset_type):
         """
         Analyze number patterns in predictions.
-        
+
         Parameters:
         - preds: DataFrame of predictions.
         - model: Name of the prediction model.
         - dataset_type: Type of dataset being analyzed.
-        
+
         Returns:
         A dictionary summarizing the most common, least common numbers, mean, and median.
         """
         logging.info(f"Analyzing patterns for {model} model ({dataset_type} dataset)...")
 
-        # Extract all numbers into a single list
-        all_numbers = preds[['num1', 'num2', 'num3', 'num4', 'num5', 'numA']].values.flatten()
+        # Determine the relevant columns based on the presence of 'num1'
+        if 'num1' in preds.columns:
+            all_numbers = preds[['num1', 'num2', 'num3', 'num4', 'num5', 'numA']].values.flatten()
+        else:
+            all_numbers = pd.concat([preds['numSum'], preds['totalSum']]).values.flatten()
 
         # Calculate frequency of each number
         number_counts = Counter(all_numbers)
@@ -126,7 +128,7 @@ class PatternAnalysis:
     def compare_with_actuals(self, pattern_summary, actuals, model, dataset_type):
         """
         Compare prediction patterns with actual data.
-        
+
         Parameters:
         - pattern_summary: Dictionary summarizing the prediction patterns.
         - actuals: DataFrame of actual data.
@@ -150,7 +152,7 @@ class PatternAnalysis:
     def save_pattern_summary(self, model, dataset_type, summary):
         """
         Save the pattern summary to a CSV file.
-        
+
         Parameters:
         - model: Name of the prediction model.
         - dataset_type: Type of dataset being analyzed.
@@ -164,7 +166,7 @@ class PatternAnalysis:
     def plot_number_distribution(self, number_counts, model, dataset_type):
         """
         Plot and save the number frequency distribution.
-        
+
         Parameters:
         - number_counts: Counter of number frequencies.
         - model: Name of the prediction model.
@@ -182,7 +184,7 @@ class PatternAnalysis:
         logging.info(f"Number distribution plot for {model} ({dataset_type}) saved to {plot_path}")
 
 # Example of how this class could be instantiated and run:
-# if __name__ == "__main__":
-#     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-#     pattern_analysis = PatternAnalysis(predictions_dir='data/predictions', data_dir='data', analysis_dir='analysis_results')
-#     pattern_analysis.run_pattern_analysis()
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    pattern_analysis = PatternAnalysis(predictions_dir='data/predictions', data_dir='data', analysis_dir='analysis_results')
+    pattern_analysis.run_pattern_analysis()

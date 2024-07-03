@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import os
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 
 class ProximityAnalysis:
     def __init__(self, predictions_dir, data_combined, data_pb, data_mb, output_dir):
@@ -44,6 +44,48 @@ class ProximityAnalysis:
         proximity_scores = np.abs(actual - predicted)
         return proximity_scores.mean()  # Average proximity score for the dataset
 
+    def process_predictions(self, pred_file, pred_data, actual_data):
+        """Process predictions for a single file."""
+        # Extract prediction date from the filename
+        pred_date_str = pred_file.split('_')[-1].replace('.csv', '')
+        try:
+            pred_date = datetime.strptime(pred_date_str, '%Y-%m-%d')
+        except ValueError:
+            logging.warning(f"Unable to parse prediction date from {pred_file}, skipping.")
+            return None
+
+        # Find the next draw date for comparison
+        next_draw_date = self.get_next_draw_date(pred_date, actual_data['draw_date'])
+        if next_draw_date is None:
+            logging.warning(f"No future draw dates found for predictions made on {pred_date} in {pred_file}.")
+            return None
+
+        # Get the actual results for the next draw date
+        actual_results = actual_data[actual_data['draw_date'] == next_draw_date]
+        if actual_results.empty:
+            logging.warning(f"No actual results found for draw date {next_draw_date} in {pred_file}.")
+            return None
+
+        # Ensure prediction data matches the shape and order of actual data
+        pred_data = pred_data.iloc[:len(actual_results)]  # Truncate to the length of actual results for fair comparison
+
+        # Determine relevant columns based on the presence of 'num1'
+        if 'num1' in pred_data.columns:
+            actual_values = actual_results[['num1', 'num2', 'num3', 'num4', 'num5', 'numA']].to_numpy()
+            predicted_values = pred_data[['num1', 'num2', 'num3', 'num4', 'num5', 'numA']].to_numpy()
+        else:
+            actual_values = actual_results[['numSum', 'totalSum']].to_numpy()
+            predicted_values = pred_data[['numSum', 'totalSum']].to_numpy()
+
+        # Calculating proximity for each set of predictions
+        proximity_score = self.calculate_proximity(actual_values, predicted_values)
+        return {
+            'prediction_file': pred_file,
+            'proximity_score': proximity_score,
+            'prediction_date': pred_date.strftime('%Y-%m-%d'),
+            'next_draw_date': next_draw_date.strftime('%Y-%m-%d')
+        }
+
     def run_analysis(self):
         """Run the proximity analysis and save results."""
         predictions = self.load_predictions()
@@ -56,14 +98,6 @@ class ProximityAnalysis:
         results = []
 
         for pred_file, pred_data in predictions.items():
-            # Extract prediction date from the filename
-            pred_date_str = pred_file.split('_')[-1].replace('.csv', '')
-            try:
-                pred_date = datetime.strptime(pred_date_str, '%Y-%m-%d')
-            except ValueError:
-                logging.warning(f"Unable to parse prediction date from {pred_file}, skipping.")
-                continue
-
             # Determine which dataset to compare with based on the file name
             if 'combined' in pred_file:
                 actual_data = actual_combined
@@ -75,36 +109,10 @@ class ProximityAnalysis:
                 logging.warning(f"Unknown dataset type in file {pred_file}, skipping.")
                 continue
 
-            # Find the next draw date for comparison
-            next_draw_date = self.get_next_draw_date(pred_date, actual_data['draw_date'])
-            if next_draw_date is None:
-                logging.warning(f"No future draw dates found for predictions made on {pred_date} in {pred_file}.")
-                continue
-
-            # Get the actual results for the next draw date
-            actual_results = actual_data[actual_data['draw_date'] == next_draw_date]
-
-            if actual_results.empty:
-                logging.warning(f"No actual results found for draw date {next_draw_date} in {pred_file}.")
-                continue
-
-            # Ensure prediction data matches the shape and order of actual data
-            pred_data = pred_data.iloc[:len(actual_results)]  # Truncate to the length of actual results for fair comparison
-
-            # Calculating proximity for each set of predictions
-            proximity_score = self.calculate_proximity(
-                actual_results[['num1', 'num2', 'num3', 'num4', 'num5', 'numA']].to_numpy(),
-                pred_data[['num1', 'num2', 'num3', 'num4', 'num5', 'numA']].to_numpy()
-            )
-
-            results.append({
-                'prediction_file': pred_file,
-                'proximity_score': proximity_score,
-                'prediction_date': pred_date.strftime('%Y-%m-%d'),
-                'next_draw_date': next_draw_date.strftime('%Y-%m-%d')
-            })
-
-            logging.info(f"Proximity score for {pred_file}: {proximity_score}")
+            result = self.process_predictions(pred_file, pred_data, actual_data)
+            if result:
+                results.append(result)
+                logging.info(f"Proximity score for {pred_file}: {result['proximity_score']}")
 
         # Save results to a CSV file
         results_df = pd.DataFrame(results)

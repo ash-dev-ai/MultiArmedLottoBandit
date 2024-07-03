@@ -102,8 +102,14 @@ class RewardPenaltySystem:
                 continue
 
             actual_row = actuals.iloc[i]
-            prediction = pred_row[['num1', 'num2', 'num3', 'num4', 'num5', 'numA']].values
-            actual = actual_row[['num1', 'num2', 'num3', 'num4', 'num5', 'numA']].values
+
+            # Determine relevant columns based on the presence of 'num1'
+            if 'num1' in pred_row.index:
+                prediction = pred_row[['num1', 'num2', 'num3', 'num4', 'num5', 'numA']].values
+                actual = actual_row[['num1', 'num2', 'num3', 'num4', 'num5', 'numA']].values
+            else:
+                prediction = pred_row[['numSum', 'totalSum']].values
+                actual = actual_row[['numSum', 'totalSum']].values
 
             # Calculate exact and partial matches
             exact_match = sum(prediction == actual)
@@ -151,4 +157,3 @@ if __name__ == "__main__":
 
     reward_penalty_system = RewardPenaltySystem(predictions_dir, data_dir, analysis_dir)
     reward_penalty_system.run_reward_penalty_system()
-

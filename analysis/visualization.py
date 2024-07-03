@@ -158,4 +158,3 @@ if __name__ == "__main__":
 
     visualization = Visualization(predictions_dir, data_dir, analysis_dir, output_dir)
     visualization.run_visualization()
-
