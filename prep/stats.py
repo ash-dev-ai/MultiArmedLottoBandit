@@ -11,24 +11,41 @@ os.makedirs(log_dir, exist_ok=True)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def calculate_stats(data, name):
-    """Calculate statistics for each column in the data and save to a text file."""
-    stats_file = os.path.join(log_dir, f'{name}_stats.txt')
-    with open(stats_file, 'w') as f:
-        for column in ['num1', 'num2', 'num3', 'num4', 'num5', 'numA']:
-            f.write(f"Statistics for {column}:\n")
-            f.write(f"Mean: {data[column].astype(int).mean()}\n")
-            f.write(f"Median: {data[column].astype(int).median()}\n")
-            mode_result = stats.mode(data[column].astype(int))
-            mode_value = mode_result.mode[0] if isinstance(mode_result.mode, np.ndarray) else mode_result.mode
-            mode_count = mode_result.count[0] if isinstance(mode_result.count, np.ndarray) else mode_result.count
-            f.write(f"Mode: {mode_value} (count: {mode_count})\n")
-            f.write(f"Standard Deviation: {data[column].astype(int).std()}\n")
-            f.write(f"Variance: {data[column].astype(int).var()}\n")
-            f.write(f"Minimum: {data[column].astype(int).min()}\n")
-            f.write(f"Maximum: {data[column].astype(int).max()}\n")
-            f.write("\n")
-    logging.info(f"Statistics for {name} saved to {stats_file}")
 
-if __name__ == "__main__":
-    logging.error("This script should be called from prep_main.py")
+class DataStatistics:
+    def __init__(self, data: pd.DataFrame, name: str):
+        self.data = data
+        self.name = name
+        self.stats_file = os.path.join(log_dir, f'{name}_stats.txt')
+
+    def calculate_row_stats(self):
+        """Calculate statistics for each row in the data."""
+        columns = ['num1', 'num2', 'num3', 'num4', 'num5', 'numA']
+        self.data['mean'] = self.data[columns].astype(int).mean(axis=1)
+        self.data['median'] = self.data[columns].astype(int).median(axis=1)
+        self.data['mode'] = self.data[columns].astype(int).mode(axis=1)[0]  # Mode might need special handling if there are multiple modes
+        self.data['std_dev'] = self.data[columns].astype(int).std(axis=1)
+        self.data['variance'] = self.data[columns].astype(int).var(axis=1)
+        self.data['min'] = self.data[columns].astype(int).min(axis=1)
+        self.data['max'] = self.data[columns].astype(int).max(axis=1)
+        logging.info(f"Added row statistics columns to {self.name} data")
+        return self.data
+
+    def process(self):
+        self.calculate_row_stats()
+        self.save_stats_to_file()
+        return self.data
+
+    def save_stats_to_file(self):
+        """Save statistics to a file (optional if you need to keep a record)"""
+        with open(self.stats_file, 'w') as f:
+            f.write(f"Statistics for {self.name}:\n")
+            f.write(f"Columns: {self.data.columns.tolist()}\n")
+            f.write(f"First few rows of data with stats:\n")
+            f.write(self.data.head().to_string())
+        logging.info(f"Statistics for {self.name} saved to {self.stats_file}")
+
+
+def calculate_stats(data, name):
+    stats_processor = DataStatistics(data, name)
+    return stats_processor.process()

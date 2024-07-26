@@ -1,54 +1,9 @@
-Statistics for num1:
-Mean: 11.453558504221954
-Median: 9.0
-Mode: 1 (count: 124)
-Standard Deviation: 9.20493307973007
-Variance: 84.73079300230891
-Minimum: 1
-Maximum: 52
-
-Statistics for num2:
-Mean: 22.28648974668275
-Median: 21.0
-Mode: 12 (count: 62)
-Standard Deviation: 11.599297560837197
-Variance: 134.54370390484374
-Minimum: 2
-Maximum: 61
-
-Statistics for num3:
-Mean: 33.709891435464414
-Median: 34.0
-Mode: 33 (count: 55)
-Standard Deviation: 12.451655644626978
-Variance: 155.04372829237087
-Minimum: 3
-Maximum: 65
-
-Statistics for num4:
-Mean: 44.72496984318456
-Median: 46.0
-Mode: 53 (count: 60)
-Standard Deviation: 12.074566812045335
-Variance: 145.79516369854665
-Minimum: 7
-Maximum: 68
-
-Statistics for num5:
-Mean: 55.376357056694815
-Median: 57.0
-Mode: 69 (count: 94)
-Standard Deviation: 10.163692026251088
-Variance: 103.30063560447995
-Minimum: 19
-Maximum: 69
-
-Statistics for numA:
-Mean: 15.425211097708083
-Median: 15.0
-Mode: 24 (count: 70)
-Standard Deviation: 9.120702911009479
-Variance: 83.18722159089678
-Minimum: 1
-Maximum: 39
-
+Statistics for pb_data:
+Columns: ['draw_date', 'winning_numbers', 'num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'weekday', 'mean', 'median', 'mode', 'std_dev', 'variance', 'min', 'max']
+First few rows of data with stats:
+   draw_date    winning_numbers num1 num2 num3 num4 num5 numA    weekday       mean  median  mode    std_dev    variance  min  max
+0 2024-07-24  16 42 59 63 68 13   16   42   59   63   68   13  Wednesday  43.500000    50.5  13.0  24.122604  581.900000   13   68
+1 2024-07-22  31 36 56 58 69 20   31   36   56   58   69   20     Monday  45.000000    46.0  20.0  18.804255  353.600000   20   69
+2 2024-07-20  18 25 31 40 57 04   18   25   31   40   57   04   Saturday  29.166667    28.0   4.0  18.280226  334.166667    4   57
+3 2024-07-17  24 27 32 47 66 26   24   27   32   47   66   26  Wednesday  37.000000    29.5  24.0  16.468151  271.200000   24   66
+4 2024-07-15  09 31 39 40 45 23   09   31   39   40   45   23     Monday  31.166667    35.0   9.0  13.332917  177.766667    9   45

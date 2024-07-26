@@ -1,54 +1,9 @@
-Statistics for num1:
-Mean: 10.318633808906183
-Median: 8.0
-Mode: 2 (count: 190)
-Standard Deviation: 8.257065939248756
-Variance: 68.17913792510195
-Minimum: 1
-Maximum: 46
-
-Statistics for num2:
-Mean: 20.926070038910506
-Median: 19.0
-Mode: 17 (count: 93)
-Standard Deviation: 10.967914000991925
-Variance: 120.2951375331547
-Minimum: 2
-Maximum: 64
-
-Statistics for num3:
-Mean: 31.55296152183312
-Median: 31.0
-Mode: 31 (count: 85)
-Standard Deviation: 12.27407883867673
-Variance: 150.6530113380519
-Minimum: 3
-Maximum: 68
-
-Statistics for num4:
-Mean: 42.233463035019454
-Median: 42.0
-Mode: 46 (count: 95)
-Standard Deviation: 12.27527986067572
-Variance: 150.68249565791095
-Minimum: 5
-Maximum: 74
-
-Statistics for num5:
-Mean: 53.038045827929096
-Median: 52.0
-Mode: 52 (count: 120)
-Standard Deviation: 11.394177092361101
-Variance: 129.82727161208646
-Minimum: 14
-Maximum: 75
-
-Statistics for numA:
-Mean: 18.01859057501081
-Median: 15.0
-Mode: 7 (count: 90)
-Standard Deviation: 12.736384286400213
-Variance: 162.21548469086227
-Minimum: 1
-Maximum: 52
-
+Statistics for mb_data:
+Columns: ['draw_date', 'winning_numbers', 'num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'weekday', 'mean', 'median', 'mode', 'std_dev', 'variance', 'min', 'max']
+First few rows of data with stats:
+   draw_date winning_numbers num1 num2 num3 num4 num5 numA  weekday       mean  median  mode    std_dev    variance  min  max
+0 2024-07-23  03 09 14 26 51   03   09   14   26   51   21  Tuesday  20.666667    17.5   3.0  16.978418  288.266667    3   51
+1 2024-07-19  10 17 23 50 67   10   17   23   50   67   03   Friday  28.333333    20.0   3.0  24.897122  619.866667    3   67
+2 2024-07-16  05 35 42 58 66   05   35   42   58   66   22  Tuesday  38.000000    38.5   5.0  22.600885  510.800000    5   66
+3 2024-07-12  15 35 48 53 68   15   35   48   53   68   08   Friday  37.833333    41.5   8.0  23.077406  532.566667    8   68
+4 2024-07-09  21 26 54 60 64   21   26   54   60   64   03  Tuesday  38.000000    40.0   3.0  24.795161  614.800000    3   64
