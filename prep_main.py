@@ -7,8 +7,7 @@ from prep.sums import DataSums
 from prep.days import DataDays
 from prep.export import DataExporter
 from prep.steps import DataSteps
-from prep.prep_num_pb import PrepNumPB
-from prep.prep_num_mb import PrepNumMB
+from prep.num_main import main as num_main
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 
@@ -72,17 +71,8 @@ def main():
         exporter = DataExporter(pb_data, mb_data)
         exporter.export_to_csv()
     
-    # Prepare number counts for Powerball
-    if pb_data is not None:
-        num_pb_preparer = PrepNumPB()
-        num_pb_preparer.prepare_counts()
-        logging.info("Powerball number counts dataset prepared.")
-    
-    # Prepare number counts for Mega Millions
-    if mb_data is not None:
-        num_mb_preparer = PrepNumMB()
-        num_mb_preparer.prepare_counts()
-        logging.info("Mega Millions number counts dataset prepared.")
+    # Call num_main to prepare counts and other number analyses
+    num_main()
 
 if __name__ == "__main__":
     main()
