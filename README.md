@@ -1,6 +1,5 @@
 ### README.md
 
-```markdown
 # MultiArmedLottoBandit
 
 This project processes and analyzes Powerball and Mega Millions lottery data to identify patterns and trends using various statistical and analytical methods.
