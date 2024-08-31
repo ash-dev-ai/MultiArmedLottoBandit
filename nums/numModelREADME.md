@@ -1,5 +1,3 @@
-Sure! Here’s a `README.md` file tailored for the `numModel` section of your project. This file explains the purpose, structure, and usage of the models within this section.
-
 ---
 
 # numModel Section
