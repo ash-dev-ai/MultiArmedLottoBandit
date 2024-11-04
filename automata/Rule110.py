@@ -1,4 +1,3 @@
-# Rule110.py
 import numpy as np
 import pandas as pd
 
@@ -9,6 +8,7 @@ class Rule110:
     def apply_rule_110(self, binary_state):
         """
         Applies Rule 110 to evolve the binary state.
+        Rule 110: Binary evolution pattern based on specific neighbor conditions.
         """
         binary_state = binary_state.astype(int)
         next_state = np.zeros_like(binary_state)
@@ -21,17 +21,55 @@ class Rule110:
         """
         Convert the lottery numbers into binary state based on num range.
         """
-        # Binary for num1 to num5 (range: 1-num_range_main)
         binary_state = np.zeros(self.num_range_main)
         for num in [row['num1'], row['num2'], row['num3'], row['num4'], row['num5']]:
             binary_state[num - 1] = 1  # Adjust for 0-indexing
 
-        # Binary for numA (range: 1-num_range_A)
         binary_stateA = np.zeros(self.num_range_A)
         if 1 <= row['numA'] <= self.num_range_A:
             binary_stateA[row['numA'] - 1] = 1  # Adjust for 0-indexing
 
         return binary_state, binary_stateA
+
+    def apply_rule_to_prediction(self, model_predictions):
+        """
+        Applies Rule 110 transformations to adjust model-based predictions.
+        
+        :param model_predictions: Initial predictions from models.
+        :return: Adjusted predictions.
+        """
+        binary_state = np.zeros(self.num_range_main)
+        for num in model_predictions['num1-5']:
+            binary_state[num - 1] = 1
+
+        binary_stateA = np.zeros(self.num_range_A)
+        if 1 <= model_predictions['numA'] <= self.num_range_A:
+            binary_stateA[model_predictions['numA'] - 1] = 1
+
+        # Evolve the binary states
+        binary_state = self.apply_rule_110(binary_state)
+        binary_stateA = self.apply_rule_110(binary_stateA)
+
+        # Convert binary states back to lottery numbers
+        adjusted_nums = np.where(binary_state == 1)[0] + 1  # Adjust for 1-based indexing
+        adjusted_numA = np.where(binary_stateA == 1)[0] + 1  # Adjust for 1-based indexing
+
+        # Ensure exactly 5 numbers for num1-5 and one for numA
+        if len(adjusted_nums) >= 5:
+            adjusted_nums = np.random.choice(adjusted_nums, 5, replace=False)
+        else:
+            remaining_nums = np.setdiff1d(np.arange(1, self.num_range_main + 1), adjusted_nums)
+            adjusted_nums = np.concatenate([adjusted_nums, np.random.choice(remaining_nums, 5 - len(adjusted_nums), replace=False)])
+
+        if len(adjusted_numA) > 0:
+            adjusted_numA = np.random.choice(adjusted_numA, 1)[0]
+        else:
+            adjusted_numA = np.random.choice(np.arange(1, self.num_range_A + 1), 1)[0]
+
+        return {
+            "num1-5": np.sort(adjusted_nums),
+            "numA": adjusted_numA
+        }
 
     def generate_predictions(self, data, n_predictions=3, n_past_draws=5, n_evolutions=3):
         """
@@ -59,11 +97,9 @@ class Rule110:
                 binary_states = self.apply_rule_110(binary_states)
                 binary_statesA = self.apply_rule_110(binary_statesA)
 
-            # Convert the evolved states back to lottery numbers
             predicted_nums = np.where(binary_states == 1)[0] + 1  # Adjust for 1-based indexing
             predicted_numA = np.where(binary_statesA == 1)[0] + 1  # Adjust for 1-based indexing
 
-            # Get the top 5 numbers and one Powerball-like number
             if len(predicted_nums) >= 5:
                 predicted_nums = np.random.choice(predicted_nums, 5, replace=False)
             else:

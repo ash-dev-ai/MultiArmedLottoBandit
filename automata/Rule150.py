@@ -1,4 +1,3 @@
-# Rule150.py
 import numpy as np
 import pandas as pd
 
@@ -23,51 +22,83 @@ class Rule150:
         Convert the lottery numbers into binary state based on num range.
         Each number is represented by setting its index in the array to 1.
         """
-        # Binary for num1 to num5 (range: 1-num_range_main)
         binary_state = np.zeros(self.num_range_main)
         for num in [row['num1'], row['num2'], row['num3'], row['num4'], row['num5']]:
             binary_state[num - 1] = 1  # Adjust for 0-indexing
 
-        # Binary for numA (range: 1-num_range_A)
         binary_stateA = np.zeros(self.num_range_A)
         if 1 <= row['numA'] <= self.num_range_A:
             binary_stateA[row['numA'] - 1] = 1  # Adjust for 0-indexing
 
         return binary_state, binary_stateA
 
+    def apply_rule_to_prediction(self, model_predictions):
+        """
+        Applies Rule 150 transformations to adjust model-based predictions.
+        
+        :param model_predictions: Initial predictions from models.
+        :return: Adjusted predictions.
+        """
+        binary_state = np.zeros(self.num_range_main)
+        for num in model_predictions['num1-5']:
+            binary_state[num - 1] = 1
+
+        binary_stateA = np.zeros(self.num_range_A)
+        if 1 <= model_predictions['numA'] <= self.num_range_A:
+            binary_stateA[model_predictions['numA'] - 1] = 1
+
+        # Evolve the binary states
+        binary_state = self.apply_rule_150(binary_state)
+        binary_stateA = self.apply_rule_150(binary_stateA)
+
+        # Convert binary states back to lottery numbers
+        adjusted_nums = np.where(binary_state == 1)[0] + 1  # Adjust for 1-based indexing
+        adjusted_numA = np.where(binary_stateA == 1)[0] + 1  # Adjust for 1-based indexing
+
+        # Ensure we have exactly 5 numbers for num1-5 and one for numA
+        if len(adjusted_nums) >= 5:
+            adjusted_nums = np.random.choice(adjusted_nums, 5, replace=False)
+        else:
+            remaining_nums = np.setdiff1d(np.arange(1, self.num_range_main + 1), adjusted_nums)
+            adjusted_nums = np.concatenate([adjusted_nums, np.random.choice(remaining_nums, 5 - len(adjusted_nums), replace=False)])
+
+        if len(adjusted_numA) > 0:
+            adjusted_numA = np.random.choice(adjusted_numA, 1)[0]
+        else:
+            adjusted_numA = np.random.choice(np.arange(1, self.num_range_A + 1), 1)[0]
+
+        return {
+            "num1-5": np.sort(adjusted_nums),
+            "numA": adjusted_numA
+        }
+
     def generate_predictions(self, data, n_predictions=3, n_past_draws=5, n_evolutions=3):
         """
         Generates n predictions using Rule 150 based on the last n_past_draws.
         For each prediction, evolve the state n_evolutions times.
         """
-        # Get the last n_past_draws to initialize the binary state
         past_draws = data.iloc[-n_past_draws:]
         binary_states = np.zeros(self.num_range_main)
         binary_statesA = np.zeros(self.num_range_A)
 
-        # Accumulate the binary states from past draws
         for _, row in past_draws.iterrows():
             binary_state, binary_stateA = self.convert_to_binary(row)
             binary_states += binary_state
             binary_statesA += binary_stateA
 
-        # Normalize the accumulated binary state (turn into binary 0/1)
         binary_states = np.clip(binary_states, 0, 1)
         binary_statesA = np.clip(binary_statesA, 0, 1)
 
         predictions = []
 
         for _ in range(n_predictions):
-            # Evolve the binary state multiple times
             for _ in range(n_evolutions):
                 binary_states = self.apply_rule_150(binary_states)
                 binary_statesA = self.apply_rule_150(binary_statesA)
 
-            # Convert the evolved states back to lottery numbers
-            predicted_nums = np.where(binary_states == 1)[0] + 1  # Adjust for 1-based indexing
-            predicted_numA = np.where(binary_statesA == 1)[0] + 1  # Adjust for 1-based indexing
+            predicted_nums = np.where(binary_states == 1)[0] + 1
+            predicted_numA = np.where(binary_statesA == 1)[0] + 1
 
-            # Get the top 5 numbers and one Powerball-like number
             if len(predicted_nums) >= 5:
                 predicted_nums = np.random.choice(predicted_nums, 5, replace=False)
             else:
@@ -85,19 +116,3 @@ class Rule150:
             })
 
         return predictions
-
-# Example of how to use the class
-if __name__ == "__main__":
-    # Load the dataset (adjust the path as needed)
-    dataset_path = 'data/data_combined.csv'
-    data = pd.read_csv(dataset_path)
-    
-    # Instantiate Rule150 class with the appropriate number range
-    rule_150 = Rule150(num_range=(70, 26))
-    
-    # Generate 3 predictions
-    predictions = rule_150.generate_predictions(data, n_predictions=3)
-    
-    # Output the predictions
-    for i, prediction in enumerate(predictions, start=1):
-        print(f"Prediction {i}: num1-5 = {prediction['num1-5']}, numA = {prediction['numA']}")

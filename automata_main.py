@@ -24,14 +24,19 @@ def determine_num_range(dataset_name):
 
 def save_predictions(predictions, dataset_name, rule_type):
     """
-    Save the predictions to predictions.csv with the appropriate rule type.
+    Save the predictions to predictions.csv with the appropriate rule type and dataset name.
     Creates the file if it doesn't exist.
     """
     predictions_file = os.path.join('data', 'predictions.csv')
     
-    # Prepare predictions DataFrame
+    # Prepare predictions DataFrame with consistent column order
     predictions_df = pd.DataFrame(predictions)
-    predictions_df['type'] = rule_type  # Add the rule type as A-<rule_number>
+    predictions_df['type'] = rule_type  # Add the rule type as A-<rule_number> or T-<trial_number>
+    predictions_df['dataset'] = dataset_name  # Add dataset column for clarity
+    
+    # Define the specific column order to ensure consistency
+    column_order = ['num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'next_draw_day', 'type', 'dataset']
+    predictions_df = predictions_df[column_order]  # Reorder columns to match the specified order
 
     # Save predictions to CSV, append if file exists
     if os.path.exists(predictions_file):
@@ -39,7 +44,7 @@ def save_predictions(predictions, dataset_name, rule_type):
     else:
         predictions_df.to_csv(predictions_file, mode='w', header=True, index=False)
 
-    print(f"Predictions saved to {predictions_file} for type {rule_type}.")
+    print(f"Predictions saved to {predictions_file} for type {rule_type} and dataset {dataset_name}.")
 
 def generate_predictions_for_dataset(dataset_name, rule_class):
     data, dataset_name = load_dataset(dataset_name)
@@ -63,11 +68,14 @@ def generate_predictions_for_dataset(dataset_name, rule_class):
                 'num3': prediction['num1-5'][2],
                 'num4': prediction['num1-5'][3],
                 'num5': prediction['num1-5'][4],
-                'numA': prediction['numA']
+                'numA': prediction['numA'],
+                'next_draw_day': prediction.get('next_draw_day', '')  # Ensure next_draw_day is included
             })
 
         # Determine the rule type code for saving (e.g., A-110, A-150)
         rule_type = f"A-{rule_class.__name__.replace('Rule', '')}"
+        
+        # Save predictions with the rule type argument and dataset name
         save_predictions(formatted_predictions, dataset_name, rule_type)
 
         # Output the predictions

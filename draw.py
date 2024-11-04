@@ -39,8 +39,8 @@ class LotteryVisualizer:
         # Add date to filename
         filename = f"{filename}_{self.date_str}.png"
         num_rows = len(self.data) if limit is None else min(limit, len(self.data))
-        fig, ax = plt.subplots(figsize=(40, num_rows / 5))  # Adjusted width for better proportions
-        ax.set_xlim(0, 8)  # Adjust x-limits for more balance
+        fig, ax = plt.subplots(figsize=(15, num_rows / 15))  # Adjusted width for better proportions
+        ax.set_xlim(0, 10)  # Adjust x-limits for more balance
         ax.set_ylim(0, num_rows)
 
         # Color maps for continuous values (e.g., mean, pairwise comparisons)
@@ -86,13 +86,13 @@ class LotteryVisualizer:
         
         # Save cumulative image
         output_path = os.path.join(output_dir, filename)
-        plt.savefig(output_path, bbox_inches='tight')
+        plt.savefig(output_path, bbox_inches='tight', dpi=300)
         plt.close(fig)
 
     def apply_rule(self, rule_number, binary_string):
         """
         Apply a cellular automaton rule to a binary string to generate the next generation.
-        
+
         :param rule_number: The rule number (e.g., 150, 110).
         :param binary_string: The current binary string representing the row.
         :return: A new binary string representing the next generation.
@@ -138,15 +138,33 @@ class LotteryVisualizer:
             next_gen = self.apply_rule(rule_number, generations[-1])
             generations.append(next_gen)
 
-        fig, ax = plt.subplots(figsize=(20, num_rows / 10))  # Adjust figure size for readability
+        # Set up plot with larger figsize for readability
+        fig, ax = plt.subplots(figsize=(20, num_rows / 10))  # Adjust figure size for clarity
+        cell_size = 1  # Each cell size
+        color_map = {'1': 'black', '0': 'white'}  # Define a color map for clarity
 
-        # Visualize each generation as a line of patches
+        # Plot each generation as a row of cells
         for idx, generation in enumerate(generations):
             for jdx, cell in enumerate(generation):
-                color = 'black' if cell == '1' else 'white'
-                ax.add_patch(plt.Rectangle((jdx, num_rows - idx - 1), 1, 1, color=color))
+                face_color = color_map[cell]
+                ax.add_patch(
+                    plt.Rectangle(
+                        (jdx * cell_size, num_rows - idx - 1),  # Position
+                        cell_size,  # Width
+                        cell_size,  # Height
+                        facecolor=face_color,  # Fill color
+                        edgecolor='lightgray'  # Edge color for cell separation
+                    )
+                )
 
-        # Remove axes for clean visualization
+        # Improve readability by adjusting plot limits and appearance
+        ax.set_xlim(0, len(generation) * cell_size)
+        ax.set_ylim(0, num_rows)
+        
+        # Add a grid to enhance visibility
+        ax.grid(visible=True, which='both', color='gray', linestyle='-', linewidth=0.2)
+
+        # Remove default axis for a clean look
         ax.set_xticks([])
         ax.set_yticks([])
         ax.spines['top'].set_visible(False)
@@ -154,22 +172,7 @@ class LotteryVisualizer:
         ax.spines['left'].set_visible(False)
         ax.spines['bottom'].set_visible(False)
 
-        # Save the automata image
+        # Save the automata image with higher resolution
         output_path = os.path.join(output_dir, filename)
-        plt.savefig(output_path, bbox_inches='tight')
+        plt.savefig(output_path, bbox_inches='tight', dpi=300)
         plt.close(fig)
-
-# Example usage for Mega Millions with Rule 150
-mb_visualizer = LotteryVisualizer(file_path="D:\Projects\Project-PBMM\current\MultiArmedLottoBandit\data\data_mb.csv", max_num=70, max_numA=25)
-mb_visualizer.create_cumulative_image(output_dir="images/mb_images", filename="mb_cumulative_image", limit=600)
-mb_visualizer.create_automata_image(rule_number=150, output_dir="images/mb_automata", filename="mb_automata_image", limit=100)
-
-# Example usage for Powerball with Rule 110
-pb_visualizer = LotteryVisualizer(file_path="D:\Projects\Project-PBMM\current\MultiArmedLottoBandit\data\data_pb.csv", max_num=69, max_numA=26, is_pb=True)
-pb_visualizer.create_cumulative_image(output_dir="images/pb_images", filename="pb_cumulative_image", limit=600)
-pb_visualizer.create_automata_image(rule_number=110, output_dir="images/pb_automata", filename="pb_automata_image", limit=100)
-
-# Example usage for Combined dataset
-comb_visualizer = LotteryVisualizer(file_path="D:\Projects\Project-PBMM\current\MultiArmedLottoBandit\data\data_combined.csv", max_num=70, max_numA=26, is_comb=True)
-comb_visualizer.create_cumulative_image(output_dir="images/comb_images", filename="comb_cumulative_image", limit=700)
-comb_visualizer.create_automata_image(rule_number=150, output_dir="images/comb_automata", filename="comb_automata_image", limit=100)
