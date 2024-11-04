@@ -4,4 +4,5 @@
 *.db
 *.db-shm
 *.db-wal
+*.pkl
 __pycache__
