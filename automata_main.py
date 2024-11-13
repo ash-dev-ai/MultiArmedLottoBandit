@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import importlib
 import pandas as pd
@@ -29,16 +30,14 @@ def save_predictions(predictions, dataset_name, rule_type):
     """
     predictions_file = os.path.join('data', 'predictions.csv')
     
-    # Prepare predictions DataFrame with consistent column order
     predictions_df = pd.DataFrame(predictions)
+    predictions_df['date'] = datetime.now().strftime('%Y-%m-%d')  # Add current date
     predictions_df['type'] = rule_type  # Add the rule type as A-<rule_number> or T-<trial_number>
     predictions_df['dataset'] = dataset_name  # Add dataset column for clarity
     
-    # Define the specific column order to ensure consistency
-    column_order = ['num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'next_draw_day', 'type', 'dataset']
-    predictions_df = predictions_df[column_order]  # Reorder columns to match the specified order
+    column_order = ['date', 'num1', 'num2', 'num3', 'num4', 'num5', 'numA', 'next_draw_day', 'dataset', 'type']
+    predictions_df = predictions_df[column_order]
 
-    # Save predictions to CSV, append if file exists
     if os.path.exists(predictions_file):
         predictions_df.to_csv(predictions_file, mode='a', header=False, index=False)
     else:
@@ -56,8 +55,8 @@ def generate_predictions_for_dataset(dataset_name, rule_class):
         # Initialize the rule class with the number range
         rule_instance = rule_class(num_range=num_range)
 
-        # Generate predictions using the rule
-        predictions = rule_instance.generate_predictions(data, n_predictions=5)
+        # Generate only 2 predictions using the rule
+        predictions = rule_instance.generate_predictions(data, n_predictions=1)
         
         # Format predictions for saving
         formatted_predictions = []
@@ -80,19 +79,15 @@ def generate_predictions_for_dataset(dataset_name, rule_class):
 
         # Output the predictions
         print(f"Generated Predictions for {dataset_name} using {rule_class.__name__}:")
-        for i, prediction in enumerate(predictions, start=1):
-            print(f"Prediction {i}: num1-5 = {prediction['num1-5']}, numA = {prediction['numA']}")
+        for i, prediction in enumerate(formatted_predictions, start=1):
+            print(f"Prediction {i}: num1-5 = {prediction['num1']}-{prediction['num2']}-{prediction['num3']}-{prediction['num4']}-{prediction['num5']}, numA = {prediction['numA']}")
     else:
         print(f"No predictions for {dataset_name} due to missing or invalid data.")
 
 def main():
-    # List of dataset names
     datasets = ['data_combined.csv', 'data_pb.csv', 'data_mb.csv']
-    
-    # List of rule numbers
     rule_numbers = [30, 37, 42, 45, 73, 90, 110, 150, 254]
     
-    # Dynamically import and apply each rule
     for rule_number in rule_numbers:
         rule_module_name = f"automata.Rule{rule_number}"
         try:

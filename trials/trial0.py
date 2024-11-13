@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import importlib
 import joblib
+import random
 from datetime import timedelta, datetime
 
 class Trial0:
@@ -41,22 +42,15 @@ class Trial0:
         if not draw_days:
             raise ValueError(f"No draw schedule found for dataset {self.dataset_name}")
 
-        # Calculate the current day of the week (1=Monday, 7=Sunday)
         today = datetime.now().weekday() + 1
-        if datetime.now().hour < 22:  # If it's before 10 PM, consider today as a possible draw day
-            current_day = today
-        else:
-            current_day = (today % 7) + 1  # Move to the next day if it's past 10 PM
-
-        # Find the next available draw day in the schedule
+        current_day = today if datetime.now().hour < 22 else (today % 7) + 1
         upcoming_days = [day for day in draw_days if day >= current_day]
         next_draw_day = min(upcoming_days) if upcoming_days else min(draw_days)
 
-        # Calculate the actual date of the next draw day
         days_until_next_draw = (next_draw_day - current_day) % 7
         next_draw_date = datetime.now() + timedelta(days=days_until_next_draw)
 
-        return next_draw_date.strftime('%A')  # Returns the day name (e.g., 'Tuesday')
+        return next_draw_date.strftime('%A')
 
     def generate_model_predictions(self, data, meta_models):
         last_date = pd.to_datetime(data['draw_date']).iloc[-1]
@@ -76,28 +70,40 @@ class Trial0:
 
         return {'num1-5': predictions, 'numA': model_numA}
 
+    def get_adjustment_factor(self):
+        """Returns a small random integer for controlled randomness, such as between -2 and 2."""
+        return random.randint(-2, 2)
+
     def generate_adjusted_predictions(self, model_predictions, last_draw_day):
+        """
+        Generate adjusted predictions for each rule using the meta model as a guardrail.
+        """
         adjusted_predictions = []
+    
         for rule_number in self.automata_rules:
             rule_module_name = f"automata.Rule{rule_number}"
+    
             try:
                 rule_module = importlib.import_module(rule_module_name)
                 rule_class = getattr(rule_module, f"Rule{rule_number}")
                 rule_instance = rule_class(num_range=self.num_range)
-
-                adjusted = rule_instance.apply_rule_to_prediction(model_predictions)
-                next_draw_day = self.get_next_draw_day(last_draw_day)
-
+    
+                # Apply rule-specific logic starting from model predictions
+                adjusted = rule_instance.apply_to_prediction(model_predictions)
+    
+                # Use the centralized get_adjustment_factor to introduce controlled randomness
                 adjusted_predictions.append({
-                    'num1': adjusted['num1-5'][0],
-                    'num2': adjusted['num1-5'][1],
-                    'num3': adjusted['num1-5'][2],
-                    'num4': adjusted['num1-5'][3],
-                    'num5': adjusted['num1-5'][4],
-                    'numA': adjusted['numA'],
-                    'type': f'T-0-A-{rule_number}',
-                    'next_draw_day': next_draw_day
+                    'num1': max(1, min(adjusted[0][0] + self.get_adjustment_factor(), self.num_range[0])),
+                    'num2': max(1, min(adjusted[0][1] + self.get_adjustment_factor(), self.num_range[0])),
+                    'num3': max(1, min(adjusted[0][2] + self.get_adjustment_factor(), self.num_range[0])),
+                    'num4': max(1, min(adjusted[0][3] + self.get_adjustment_factor(), self.num_range[0])),
+                    'num5': max(1, min(adjusted[0][4] + self.get_adjustment_factor(), self.num_range[0])),
+                    'numA': max(1, min(adjusted[1] + self.get_adjustment_factor(), self.num_range[1])),
+                    'next_draw_day': self.get_next_draw_day(last_draw_day),
+                    'type': f'T-0-A-{rule_number}'
                 })
+    
             except (ModuleNotFoundError, AttributeError) as e:
                 print(f"Error loading {rule_module_name}: {e}")
+    
         return adjusted_predictions
